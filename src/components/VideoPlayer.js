@@ -28,9 +28,14 @@ export default function VideoPlayer({ embedUrl, title, onClose }) {
   // Normalize URL helper
   const normalizeUrl = (url) => {
     if (!url) return 'https://crtanifilmovielena.com';
-    let target = url;
+    let target = url.trim();
     if (target.startsWith('//')) {
       target = 'https:' + target;
+    } else if (target.startsWith('/')) {
+      target = 'https://www.gledajcrtace.net' + target;
+    }
+    if (!target.startsWith('http://') && !target.startsWith('https://')) {
+      target = 'https://' + target;
     }
     // Intercept VK watch page links and convert to clean iframe embed URL
     const vkMatch = target.match(/vk\.com\/video(-?[0-9]+)_([0-9]+)/i);

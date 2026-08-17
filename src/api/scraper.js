@@ -69,13 +69,16 @@ export async function fetchMovieDetailsRaw(movieUrl) {
       let embedUrl = movieUrl;
       const iframeMatches = html.matchAll(/<iframe[^>]+src=["']([^"']+)["'][^>]*>/gi);
       for (const m of iframeMatches) {
-        const src = m[1];
+        let src = m[1];
         if (
           !src.includes('facebook') &&
           !src.includes('counter') &&
           !src.includes('iFb') &&
+          !src.startsWith('/?') &&
           !src.includes('about:blank')
         ) {
+          if (src.startsWith('//')) src = 'https:' + src;
+          else if (src.startsWith('/')) src = 'https://www.gledajcrtace.net' + src;
           embedUrl = src;
           break;
         }
