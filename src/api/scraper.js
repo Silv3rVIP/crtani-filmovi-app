@@ -66,6 +66,30 @@ export async function fetchMovieDetailsRaw(movieUrl) {
 
     // Handle gledajcrtace.net detail pages directly
     if (movieUrl.includes('gledajcrtace.net')) {
+      let embedUrl = movieUrl;
+      const iframeMatches = Array.from(html.matchAll(/<iframe[^>]+src=["']([^"']+)["'][^>]*>/gi));
+      const validIframes = [];
+
+      for (const m of iframeMatches) {
+        let src = m[1];
+        if (
+          !src.includes('facebook') &&
+          !src.includes('counter') &&
+          !src.includes('iFb') &&
+          !src.includes('cbox') &&
+          !src.startsWith('/?') &&
+          !src.includes('about:blank')
+        ) {
+          if (src.startsWith('//')) src = 'https:' + src;
+          else if (src.startsWith('/')) src = 'https://www.gledajcrtace.net' + src;
+          validIframes.push(src);
+        }
+      }
+
+      // Prefer Vidara, Send, VK, or OK hosts over React Single Page App embeds
+      const vidaraMatch = validIframes.find(url => url.includes('vidara') || url.includes('send') || url.includes('vk') || url.includes('ok'));
+      embedUrl = vidaraMatch || validIframes[0] || movieUrl;
+
       const descMatch = html.match(/<meta property="og:description" content="([^"]+)"/i);
       const description = descMatch ? cleanText(descMatch[1]) : 'Gledajte sinhronizovane crtane filmove besplatno na vašem Android TV ili telefonu.';
 
@@ -74,7 +98,7 @@ export async function fetchMovieDetailsRaw(movieUrl) {
         poster: poster || 'https://image.tmdb.org/t/p/w1280/stKGOm8UyhuLPR9sZLjs5AkmncA.jpg',
         backdrop: poster || 'https://image.tmdb.org/t/p/w1280/stKGOm8UyhuLPR9sZLjs5AkmncA.jpg',
         description,
-        embedUrl: movieUrl
+        embedUrl
       };
     }
 

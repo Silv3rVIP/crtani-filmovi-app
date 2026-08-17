@@ -8,7 +8,14 @@ export default function PlayerScreen({ route, navigation }) {
     <VideoPlayer
       embedUrl={embedUrl}
       title={title}
-      onClose={() => navigation?.goBack()}
+      navigation={navigation}
+      onClose={() => {
+        if (navigation?.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation?.navigate('Home');
+        }
+      }}
     />
   );
 }

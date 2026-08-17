@@ -27,8 +27,8 @@ export const cacheManager = {
       const item = MEMORY_CACHE.get(key);
       if (Date.now() - item.timestamp < CACHE_TTL_MS) {
         // If details cache item has a raw website page URL or strp2p.site URL, invalidate and re-fetch fresh stream link
-        if (key.startsWith('details_') && item.data && item.data.embedUrl && (item.data.embedUrl.includes('crtanifilmovielena.com') || item.data.embedUrl.includes('strp2p.site'))) {
-          // Stale site URL or strp2p.site, skip memory cache
+        if (key.startsWith('details_') && item.data && item.data.embedUrl && (item.data.embedUrl.includes('crtanifilmovielena.com') || item.data.embedUrl.includes('gledajcrtace.net') || item.data.embedUrl.includes('strp2p.site'))) {
+          // Stale site URL, skip memory cache
         } else {
           return item.data;
         }
