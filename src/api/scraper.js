@@ -317,7 +317,7 @@ export async function fetchGledajCrtaceData() {
               title: titleText,
               poster: poster || 'https://image.tmdb.org/t/p/w500/7Md3nuV0ZprBTnkdR3OrUCEsrSP.jpg',
               backdrop: poster || 'https://image.tmdb.org/t/p/w500/7Md3nuV0ZprBTnkdR3OrUCEsrSP.jpg',
-              tags: assignCategoryTags(titleText, href)
+              tags: ['all', 'gledajcrtace', ...assignCategoryTags(titleText, href)]
             });
           }
         }

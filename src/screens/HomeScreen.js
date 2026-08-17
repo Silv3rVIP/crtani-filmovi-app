@@ -38,6 +38,7 @@ export default function HomeScreen({ navigation }) {
 
   const categoriesList = [
     { id: 'all', name: '⚡ Sve' },
+    { id: 'gledajcrtace', name: '🎬 GledajCrtace.net' },
     { id: 'popular', name: '🔥 Popularno' },
     { id: 'disney', name: '🏰 Disney & Pixar' },
     { id: 'classic', name: '⭐ Klasični' },
