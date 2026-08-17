@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Crtani Filmovi Elena",
+    "slug": "crtani-filmovi-app",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A12"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0A12"
+      },
+      "package": "com.crtani.filmovi.tv",
+      "intentFilters": [
+        {
+          "action": "MAIN",
+          "category": [
+            "LEANBACK_LAUNCHER",
+            "LAUNCHER"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

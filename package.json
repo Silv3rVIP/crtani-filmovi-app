@@ -1,0 +1,28 @@
+{
+  "name": "crtani-filmovi-app",
+  "version": "1.0.0",
+  "description": "Universal Android Phone and Android TV application for streaming dubbed cartoons from crtanifilmovielena.com",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "test": "node test-scraper.js"
+  },
+  "keywords": [
+    "android-tv",
+    "android-phone",
+    "react-native",
+    "expo",
+    "crtani-filmovi",
+    "serbian-cartoons",
+    "ex-yu"
+  ],
+  "author": "Antigravity AI",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "cheerio": "^1.0.0-rc.12"
+  }
+}
