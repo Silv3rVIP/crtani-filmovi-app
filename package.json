@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Universal Android Phone and Android TV application for streaming dubbed cartoons from crtanifilmovielena.com",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -22,12 +23,14 @@
   "author": "Antigravity AI",
   "license": "MIT",
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.1.1",
     "axios": "^1.19.0",
     "cheerio": "^1.2.0",
     "expo": "^57.0.13",
     "expo-splash-screen": "~57.0.6",
     "react": "19.2.3",
     "react-native": "^0.86.2",
+    "react-native-safe-area-context": "^5.9.0",
     "react-native-webview": "13.16.1"
   }
 }

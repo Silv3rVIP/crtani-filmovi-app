@@ -2,39 +2,78 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ImageBackground, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { fetchMovieDetails } from '../api/scraper';
 import { isTV } from '../utils/device';
+import { watchHistoryManager } from '../services/watchHistoryManager';
+import { cacheManager } from '../services/cacheManager';
 
 export default function DetailScreen({ route, navigation }) {
-  const { movie } = route.params;
+  const movie = route?.params?.movie || {};
   const [details, setDetails] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isPlayFocused, setIsPlayFocused] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadDetails() {
-      setLoading(true);
-      const res = await fetchMovieDetails(movie.url || `https://crtanifilmovielena.com/movie/${movie.id}/`);
-      setDetails(res);
-      setLoading(false);
+      if (!movie.url && !movie.id) {
+        return;
+      }
+
+      const cacheKey = `details_${movie.id || movie.url}`;
+      const cached = await cacheManager.get(cacheKey);
+      if (cached && isMounted) {
+        setDetails(cached);
+        setLoading(false);
+      } else if (isMounted) {
+        setLoading(true);
+      }
+
+      try {
+        const res = await fetchMovieDetails(movie.url || `https://crtanifilmovielena.com/movie/${movie.id}/`);
+        if (res && isMounted) {
+          setDetails(res);
+          cacheManager.set(cacheKey, res);
+        }
+      } catch (err) {
+        console.warn('Detail fetch error:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     }
+
     loadDetails();
+
+    return () => {
+      isMounted = false;
+    };
   }, [movie]);
 
   const handlePlay = () => {
+    watchHistoryManager.saveProgress(movie);
+    const streamUrl = details?.embedUrl || movie?.url || (movie?.id ? `https://crtanifilmovielena.com/movie/${movie.id}/` : 'https://crtanifilmovielena.com');
+
     navigation.navigate('Player', {
-      embedUrl: details?.embedUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-      title: movie.title
+      embedUrl: streamUrl,
+      title: movie?.title || 'Sinhronizovani Crtani Film'
     });
   };
+
+  const backdropUri = movie?.backdrop || movie?.poster || 'https://image.tmdb.org/t/p/w1280/stKGOm8UyhuLPR9sZLjs5AkmncA.jpg';
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ flexGrow: 1 }}>
       <ImageBackground
-        source={{ uri: movie.backdrop || movie.poster }}
+        source={{ uri: backdropUri }}
         style={styles.backdrop}
         resizeMode="cover"
       >
         <View style={styles.gradientOverlay}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation?.goBack()}
+            activeOpacity={0.6}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          >
             <Text style={styles.backText}>← Nazad</Text>
           </TouchableOpacity>
 

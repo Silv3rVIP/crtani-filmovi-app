@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, BackHandler } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import DetailScreen from './src/screens/DetailScreen';
 import SearchScreen from './src/screens/SearchScreen';
@@ -23,50 +24,65 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (currentScreen !== 'Home') {
+        goBack();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    return () => subscription.remove();
+  }, [currentScreen]);
+
   const navigationObj = {
     navigate,
     goBack
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A12" />
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0A0A12" />
 
-      {/* Top Navbar */}
-      {currentScreen !== 'Player' && (
-        <View style={styles.navbar}>
-          <TouchableOpacity onPress={() => navigate('Home')} activeOpacity={0.7}>
-            <Text style={styles.brand}>
-              <Text style={{ color: '#00E5FF' }}>Crtani</Text> Elena TV
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.navActions}>
-            <TouchableOpacity
-              onPress={() => navigate('Home')}
-              style={[styles.navBtn, currentScreen === 'Home' && styles.navBtnActive]}
-            >
-              <Text style={styles.navBtnText}>Početna</Text>
+        {/* Top Navbar */}
+        {currentScreen !== 'Player' && (
+          <View style={styles.navbar}>
+            <TouchableOpacity onPress={() => navigate('Home')} activeOpacity={0.7}>
+              <Text style={styles.brand}>
+                <Text style={{ color: '#00E5FF' }}>Crtani</Text> Elena TV
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigate('Search')}
-              style={[styles.navBtn, currentScreen === 'Search' && styles.navBtnActive]}
-            >
-              <Text style={styles.navBtnText}>🔍 Pretraga</Text>
-            </TouchableOpacity>
+            <View style={styles.navActions}>
+              <TouchableOpacity
+                onPress={() => navigate('Home')}
+                style={[styles.navBtn, currentScreen === 'Home' && styles.navBtnActive]}
+              >
+                <Text style={styles.navBtnText}>Početna</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navigate('Search')}
+                style={[styles.navBtn, currentScreen === 'Search' && styles.navBtnActive]}
+              >
+                <Text style={styles.navBtnText}>🔍 Pretraga</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      )}
+        )}
 
-      {/* Screen Router */}
-      <View style={styles.screenContainer}>
-        {currentScreen === 'Home' && <HomeScreen navigation={navigationObj} />}
-        {currentScreen === 'Detail' && <DetailScreen route={{ params: screenParams }} navigation={navigationObj} />}
-        {currentScreen === 'Search' && <SearchScreen navigation={navigationObj} />}
-        {currentScreen === 'Player' && <PlayerScreen route={{ params: screenParams }} navigation={navigationObj} />}
-      </View>
-    </SafeAreaView>
+        {/* Screen Router */}
+        <View style={styles.screenContainer}>
+          {currentScreen === 'Home' && <HomeScreen navigation={navigationObj} />}
+          {currentScreen === 'Detail' && <DetailScreen route={{ params: screenParams }} navigation={navigationObj} />}
+          {currentScreen === 'Search' && <SearchScreen navigation={navigationObj} />}
+          {currentScreen === 'Player' && <PlayerScreen route={{ params: screenParams }} navigation={navigationObj} />}
+        </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
