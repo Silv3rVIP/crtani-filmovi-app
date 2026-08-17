@@ -61,8 +61,37 @@ export async function fetchMovieDetailsRaw(movieUrl) {
     const title = titleMatch ? cleanText(titleMatch[1]) : 'Sinhronizovani Crtani Film';
 
     // Extract poster
-    const posterMatch = html.match(/<meta property="og:image" content="([^"]+)"/i);
+    const posterMatch = html.match(/<meta property="og:image" content="([^"]+)"/i) || html.match(/<img[^>]+src=["'](https?:\/\/image\.tmdb\.org[^"']+)["']/i);
     const poster = posterMatch ? posterMatch[1] : '';
+
+    // Handle gledajcrtace.net detail pages directly
+    if (movieUrl.includes('gledajcrtace.net')) {
+      let embedUrl = movieUrl;
+      const iframeMatches = html.matchAll(/<iframe[^>]+src=["']([^"']+)["'][^>]*>/gi);
+      for (const m of iframeMatches) {
+        const src = m[1];
+        if (
+          !src.includes('facebook') &&
+          !src.includes('counter') &&
+          !src.includes('iFb') &&
+          !src.includes('about:blank')
+        ) {
+          embedUrl = src;
+          break;
+        }
+      }
+
+      const descMatch = html.match(/<meta property="og:description" content="([^"]+)"/i);
+      const description = descMatch ? cleanText(descMatch[1]) : 'Gledajte sinhronizovane crtane filmove besplatno na vašem Android TV ili telefonu.';
+
+      return {
+        title,
+        poster: poster || 'https://image.tmdb.org/t/p/w1280/stKGOm8UyhuLPR9sZLjs5AkmncA.jpg',
+        backdrop: poster || 'https://image.tmdb.org/t/p/w1280/stKGOm8UyhuLPR9sZLjs5AkmncA.jpg',
+        description,
+        embedUrl
+      };
+    }
 
     // Extract video stream or iframe player URL by resolving direct player source from WordPress AJAX
     let embedUrl = movieUrl;
@@ -245,16 +274,78 @@ function assignCategoryTags(title = '', id = '') {
   return tags;
 }
 
+export async function fetchGledajCrtaceData() {
+  try {
+    const urls = [
+      'https://www.gledajcrtace.net/publ/dugometrazni_crtani_filmovi/25',
+      'https://www.gledajcrtace.net/publ/dugometrazni_crtani_filmovi/25-2',
+      'https://www.gledajcrtace.net/publ/crtane_serije/'
+    ];
+
+    const results = [];
+    const seen = new Set();
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        });
+        const html = await res.text();
+
+        const linkRegex = /<a[^>]+href=["']([^"']*\/publ\/[^"']+\/\d+-\d+-\d+-\d+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+        let match;
+
+        while ((match = linkRegex.exec(html)) !== null) {
+          let href = match[1];
+          if (href.startsWith('/')) href = 'https://www.gledajcrtace.net' + href;
+          const titleText = cleanText(match[2]);
+
+          if (titleText && titleText.length > 2 && !seen.has(href)) {
+            seen.add(href);
+
+            const linkPos = match.index;
+            const snippet = html.substring(Math.max(0, linkPos - 400), Math.min(html.length, linkPos + 400));
+            const imgMatch = snippet.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+            let poster = imgMatch ? imgMatch[1] : '';
+            if (poster.startsWith('/')) poster = 'https://www.gledajcrtace.net' + poster;
+
+            results.push({
+              id: href,
+              url: href,
+              title: titleText,
+              poster: poster || 'https://image.tmdb.org/t/p/w500/7Md3nuV0ZprBTnkdR3OrUCEsrSP.jpg',
+              backdrop: poster || 'https://image.tmdb.org/t/p/w500/7Md3nuV0ZprBTnkdR3OrUCEsrSP.jpg',
+              tags: assignCategoryTags(titleText, href)
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Error fetching gledajcrtace category:', e);
+      }
+    }
+    return results;
+  } catch (err) {
+    console.error('Error fetching gledajcrtace dataset:', err);
+    return [];
+  }
+}
+
 async function fetchHomePageDataRaw() {
   try {
-    const response = await fetch(BASE_URL, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      }
-    });
+    // Fetch both sources in parallel
+    const [lenaRes, gledajCrtaceMovies] = await Promise.all([
+      fetch(BASE_URL, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        }
+      }).then(r => r.text()).catch(() => ''),
+      fetchGledajCrtaceData().catch(() => [])
+    ]);
 
-    const html = await response.text();
+    const html = lenaRes || '';
     const featured = [];
     const movies = [];
 
@@ -292,6 +383,15 @@ async function fetchHomePageDataRaw() {
           backdrop: imageUrl,
           tags: assignCategoryTags(title, id)
         });
+      }
+    }
+
+    // Merge gledajcrtace.net movies
+    if (Array.isArray(gledajCrtaceMovies)) {
+      for (const item of gledajCrtaceMovies) {
+        if (!movies.some(m => m.title.toLowerCase() === item.title.toLowerCase())) {
+          movies.push(item);
+        }
       }
     }
 
@@ -406,33 +506,61 @@ async function fetchHomePageDataRaw() {
  */
 export async function searchMovies(query) {
   if (!query) return [];
-  const searchUrl = `${BASE_URL}/?s=${encodeURIComponent(query)}`;
   try {
-    const response = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
+    const searchLenaUrl = `${BASE_URL}/?s=${encodeURIComponent(query)}`;
+    const searchGledajUrl = `https://www.gledajcrtace.net/search/?q=${encodeURIComponent(query)}`;
 
-    const html = await response.text();
+    const [lenaRes, gledajRes] = await Promise.allSettled([
+      fetch(searchLenaUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }).then(r => r.text()),
+      fetch(searchGledajUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }).then(r => r.text())
+    ]);
+
     const results = [];
-    const movieCardRegex = /<a href="(https:\/\/crtanifilmovielena\.com\/movie\/[^"]+)"[^>]*>[\s\S]*?<img [^>]*src="([^"]+)"[^>]*>[\s\S]*?<h[34][^>]*>([\s\S]*?)<\/h[34]>/g;
+    const seen = new Set();
 
-    let match;
-    while ((match = movieCardRegex.exec(html)) !== null) {
-      const movieUrl = match[1];
-      const imageUrl = match[2];
-      const title = cleanText(match[3]);
-      const id = movieUrl.replace(/.*\/movie\//, '').replace(/\//g, '');
+    if (lenaRes.status === 'fulfilled' && lenaRes.value) {
+      const html = lenaRes.value;
+      const movieCardRegex = /<a href="(https:\/\/crtanifilmovielena\.com\/movie\/[^"]+)"[^>]*>[\s\S]*?<img [^>]*src="([^"]+)"[^>]*>[\s\S]*?<h[34][^>]*>([\s\S]*?)<\/h[34]>/g;
+      let match;
+      while ((match = movieCardRegex.exec(html)) !== null) {
+        const movieUrl = match[1];
+        const imageUrl = match[2];
+        const title = cleanText(match[3]);
+        const id = movieUrl.replace(/.*\/movie\//, '').replace(/\//g, '');
+        if (title && !seen.has(id)) {
+          seen.add(id);
+          results.push({
+            id,
+            url: movieUrl,
+            title,
+            poster: imageUrl,
+            backdrop: imageUrl,
+            tags: assignCategoryTags(title, id)
+          });
+        }
+      }
+    }
 
-      if (title) {
-        results.push({
-          id,
-          url: movieUrl,
-          title,
-          poster: imageUrl,
-          backdrop: imageUrl
-        });
+    if (gledajRes.status === 'fulfilled' && gledajRes.value) {
+      const html = gledajRes.value;
+      const linkRegex = /<a[^>]+href=["']([^"']*\/publ\/[^"']+\/\d+-\d+-\d+-\d+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+      let match;
+      while ((match = linkRegex.exec(html)) !== null) {
+        let href = match[1];
+        if (href.startsWith('/')) href = 'https://www.gledajcrtace.net' + href;
+        const titleText = cleanText(match[2].split('">')[0]);
+
+        if (titleText && titleText.length > 2 && !seen.has(href)) {
+          seen.add(href);
+          results.push({
+            id: href,
+            url: href,
+            title: titleText,
+            poster: 'https://image.tmdb.org/t/p/w500/7Md3nuV0ZprBTnkdR3OrUCEsrSP.jpg',
+            backdrop: 'https://image.tmdb.org/t/p/w500/7Md3nuV0ZprBTnkdR3OrUCEsrSP.jpg',
+            tags: assignCategoryTags(titleText, href)
+          });
+        }
       }
     }
 
