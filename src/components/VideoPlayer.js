@@ -16,6 +16,9 @@ function getRefererForUrl(url) {
     if (parsed.hostname.includes('waaw.ac')) {
       return 'https://waaw.ac/';
     }
+    if (parsed.hostname.includes('byse') || parsed.hostname.includes('vidara') || parsed.hostname.includes('gledajcrtace')) {
+      return 'https://www.gledajcrtace.net/';
+    }
     return `${parsed.protocol}//${parsed.hostname}/`;
   } catch (e) {
     return 'https://crtanifilmovielena.com/';
@@ -103,10 +106,13 @@ export default function VideoPlayer({ embedUrl, title, onClose }) {
             height: 100% !important;
           }
           
-          /* Hide non-video site chrome, titles, sidebars, VK headers, and ad overlays */
+          /* Hide non-video site chrome, titles, sidebars, VK headers, ad banners, and comments sections */
           header, footer, nav, .navbar, .sidebar, #header, #footer, .site-header, .site-footer,
           .top-header, .main-header, .film-desc, .breadcrumb, .social-share,
           .adsbygoogle, .ad-banner, .popunder, .popup,
+          #comments, .comments, .comments-tab, #com-list, .com-title, #add-comm,
+          .comment-block, #mComms, #com-add-form, .comm-body, .comm-rec, .u-comm, #soc-comments,
+          iframe[src*="newsletter"], iframe[src*="campaign"], iframe[id*="iFb"], iframe[src*="facebook"], iframe[src*="comments"],
           .mv_title, .mv_author, .mv_info, .mv_actions, .videoplayer_top, .videoplayer_title,
           .VideoPage__leftColumn, .VideoPage__rightColumn, .HeaderNav, .SideMenu {
             display: none !important;
@@ -136,6 +142,24 @@ export default function VideoPlayer({ embedUrl, title, onClose }) {
 
         function enforceNativeLayout() {
           removeOverlays();
+
+          // Hide comments & social blocks dynamically
+          var comms = document.querySelectorAll('#comments, .comments, [class*="comment"], [id*="comment"], #com-list, #mComms');
+          comms.forEach(function(c) {
+            try { c.style.setProperty('display', 'none', 'important'); } catch(e) {}
+          });
+
+          // Promote real video iframe / video element to top-level fixed z-index: 999999
+          var videoPlayerElements = document.querySelectorAll('video, iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="embed"], #player-frame iframe');
+          videoPlayerElements.forEach(function(el) {
+            el.style.setProperty('position', 'fixed', 'important');
+            el.style.setProperty('top', '0px', 'important');
+            el.style.setProperty('left', '0px', 'important');
+            el.style.setProperty('width', '100vw', 'important');
+            el.style.setProperty('height', '100vh', 'important');
+            el.style.setProperty('z-index', '999999', 'important');
+            el.style.setProperty('background', '#000000', 'important');
+          });
           var iframes = document.querySelectorAll('iframe');
           iframes.forEach(function(f) {
             if (!f.src || f.src === 'about:blank' || f.src.includes('about:blank')) {
