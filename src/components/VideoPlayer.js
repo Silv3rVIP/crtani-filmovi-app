@@ -106,10 +106,14 @@ export default function VideoPlayer({ embedUrl, title, onClose }) {
             height: 100% !important;
           }
           
-          /* Hide non-video site chrome, titles, sidebars, VK headers, ad banners, and comments sections */
+          /* Hide non-video site chrome, titles, sidebars, uCoZ headers, menus, logins, ad banners, Cbox chat, and comments sections */
           header, footer, nav, .navbar, .sidebar, #header, #footer, .site-header, .site-footer,
           .top-header, .main-header, .film-desc, .breadcrumb, .social-share,
           .adsbygoogle, .ad-banner, .popunder, .popup,
+          .top-box, .header-box, .user-box, #header-bg, #header-top, .main-title, .entry-title, .title-box,
+          #ut-site-title, #ut-site-logo, .login-box, .user-login, #p-user, #cat-title, #p-title,
+          [class*="header"], [id*="header"], [class*="login"], [class*="menu"],
+          #cbox, .cbox, #cboxdiv, [id*="cbox"], [class*="cbox"], iframe[src*="cbox"], iframe[src*="chat"],
           #comments, .comments, .comments-tab, #com-list, .com-title, #add-comm,
           .comment-block, #mComms, #com-add-form, .comm-body, .comm-rec, .u-comm, #soc-comments,
           iframe[src*="newsletter"], iframe[src*="campaign"], iframe[id*="iFb"], iframe[src*="facebook"], iframe[src*="comments"],
@@ -123,17 +127,19 @@ export default function VideoPlayer({ embedUrl, title, onClose }) {
             pointer-events: none !important;
           }
 
-          /* Force video & iframe containers to fill screen */
-          iframe, video, #app, #player, .player-container, #player-frame {
-            position: absolute !important;
+          /* Force ONLY video & player containers to fill screen */
+          video, #player, .player-container, #player-frame,
+          iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="embed"] {
+            position: fixed !important;
             top: 0 !important;
             left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
+            width: 100vw !important;
+            height: 100vh !important;
             border: none !important;
             outline: none !important;
             background: #000000 !important;
             object-fit: contain !important;
+            z-index: 9999999 !important;
           }
         \`;
         if (!document.getElementById('native-player-fullscreen')) {
@@ -143,22 +149,30 @@ export default function VideoPlayer({ embedUrl, title, onClose }) {
         function enforceNativeLayout() {
           removeOverlays();
 
-          // Hide comments & social blocks dynamically
-          var comms = document.querySelectorAll('#comments, .comments, [class*="comment"], [id*="comment"], #com-list, #mComms');
+          // Destroy Cbox chat, comments & social blocks dynamically
+          var comms = document.querySelectorAll('#cbox, .cbox, #cboxdiv, [id*="cbox"], [class*="cbox"], iframe[src*="cbox"], iframe[src*="chat"], #comments, .comments, [class*="comment"], [id*="comment"], #com-list, #mComms');
           comms.forEach(function(c) {
-            try { c.style.setProperty('display', 'none', 'important'); } catch(e) {}
+            try {
+              c.style.setProperty('display', 'none', 'important');
+              c.style.setProperty('visibility', 'hidden', 'important');
+              c.style.setProperty('opacity', '0', 'important');
+              c.style.setProperty('height', '0px', 'important');
+              c.style.setProperty('pointer-events', 'none', 'important');
+            } catch(e) {}
           });
 
-          // Promote real video iframe / video element to top-level fixed z-index: 999999
-          var videoPlayerElements = document.querySelectorAll('video, iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="embed"], #player-frame iframe');
+          // Promote real video iframe / video element to top-level fixed z-index: 9999999
+          var videoPlayerElements = document.querySelectorAll('video, iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="embed"], #player-frame iframe, iframe');
           videoPlayerElements.forEach(function(el) {
-            el.style.setProperty('position', 'fixed', 'important');
-            el.style.setProperty('top', '0px', 'important');
-            el.style.setProperty('left', '0px', 'important');
-            el.style.setProperty('width', '100vw', 'important');
-            el.style.setProperty('height', '100vh', 'important');
-            el.style.setProperty('z-index', '999999', 'important');
-            el.style.setProperty('background', '#000000', 'important');
+            if (el.src && !el.src.includes('cbox') && !el.src.includes('facebook') && !el.src.includes('chat')) {
+              el.style.setProperty('position', 'fixed', 'important');
+              el.style.setProperty('top', '0px', 'important');
+              el.style.setProperty('left', '0px', 'important');
+              el.style.setProperty('width', '100vw', 'important');
+              el.style.setProperty('height', '100vh', 'important');
+              el.style.setProperty('z-index', '9999999', 'important');
+              el.style.setProperty('background', '#000000', 'important');
+            }
           });
           var iframes = document.querySelectorAll('iframe');
           iframes.forEach(function(f) {
