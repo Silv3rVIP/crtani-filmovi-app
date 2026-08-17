@@ -9,7 +9,15 @@ const BASE_URL = 'https://crtanifilmovielena.com';
  */
 function cleanText(text) {
   if (!text) return '';
-  return text.replace(/\s+/g, ' ').trim();
+  return text
+    .replace(/<[^>]*>/g, '')
+    .replace(/&#8211;/g, '–')
+    .replace(/&#038;/g, '&')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
