@@ -136,13 +136,13 @@ export default function DetailScreen({ route, navigation }) {
   }, [movie]);
 
   const handlePlayCurrent = () => {
-    watchHistoryManager.saveProgress(movie);
+    const ep = isSeries && episodesList.length > 0 ? (episodesList[selectedEpisodeIdx] || episodesList[0]) : null;
+    watchHistoryManager.saveProgress(movie, 0, 0, ep);
     
     let streamUrl = '';
     let streamTitle = displayTitle;
 
     if (isSeries && episodesList.length > 0) {
-      const ep = episodesList[selectedEpisodeIdx] || episodesList[0];
       streamUrl = ep?.embedUrl || serversList[activeServerIdx]?.embedUrl || movie?.streamUrl;
       streamTitle = `${displayTitle} - ${ep?.title || `Epizoda ${selectedEpisodeIdx + 1}`}`;
     } else {

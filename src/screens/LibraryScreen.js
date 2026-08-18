@@ -8,8 +8,10 @@ export default function LibraryScreen({ navigation }) {
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
-    const list = watchHistoryManager.getHistory();
-    setHistory(list);
+    const unsubscribe = watchHistoryManager.subscribe((list) => {
+      setHistory(list);
+    });
+    return () => unsubscribe();
   }, []);
 
   return (
