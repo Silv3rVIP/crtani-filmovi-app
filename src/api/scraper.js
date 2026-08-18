@@ -197,16 +197,36 @@ export async function fetchMovieDetailsRaw(movieUrl) {
  * Fetch detailed movie information including stream embed link with Stremio caching
  */
 export async function fetchMovieDetails(movieUrl) {
-  const cacheKey = `details_${movieUrl}`;
-  const cached = await cacheManager.get(cacheKey);
-  if (cached) {
-    return cached;
+  try {
+    if (!movieUrl) {
+      return {
+        id: 'fallback',
+        title: 'Sinhronizovani Crtani Film',
+        description: 'Popularni sinhronizovani crtani film.',
+        embedUrl: 'https://crtanifilmovielena.com',
+        pageUrl: 'https://crtanifilmovielena.com'
+      };
+    }
+    const cacheKey = `details_${movieUrl}`;
+    const cached = await cacheManager.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const fresh = await fetchMovieDetailsRaw(movieUrl);
+    if (fresh) {
+      await cacheManager.set(cacheKey, fresh);
+    }
+    return fresh;
+  } catch (err) {
+    console.warn('Error fetching movie details:', err);
+    return {
+      id: movieUrl,
+      title: 'Sinhronizovani Crtani Film',
+      description: 'Popularni sinhronizovani crtani film sa srpskom i hrvatskom sinhronizacijom.',
+      embedUrl: movieUrl,
+      pageUrl: movieUrl
+    };
   }
-  const fresh = await fetchMovieDetailsRaw(movieUrl);
-  if (fresh) {
-    await cacheManager.set(cacheKey, fresh);
-  }
-  return fresh;
 }
 
 /**

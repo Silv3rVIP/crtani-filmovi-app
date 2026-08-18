@@ -1,17 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, FlatList, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, FlatList, StyleSheet, TouchableOpacity, Image, TextInput } from 'react-native';
 import { fetchHomePageData } from '../api/scraper';
-import HeroBanner from '../components/HeroBanner';
 import MovieCard from '../components/MovieCard';
-import { isTV, getLayoutMetrics } from '../utils/device';
+import { isTV } from '../utils/device';
 import { watchHistoryManager } from '../services/watchHistoryManager';
 
 export default function HomeScreen({ navigation }) {
   const [data, setData] = useState({ featured: [], movies: [], categories: [] });
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [watchHistory, setWatchHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = async () => {
     const result = await fetchHomePageData();
@@ -20,15 +17,13 @@ export default function HomeScreen({ navigation }) {
     }
     const history = watchHistoryManager.getHistory();
     setWatchHistory(history);
-    setLoading(false);
-    setRefreshing(false);
   };
 
   useEffect(() => {
     loadData();
     const interval = setInterval(() => {
       setWatchHistory(watchHistoryManager.getHistory());
-    }, 1500);
+    }, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -36,36 +31,38 @@ export default function HomeScreen({ navigation }) {
     navigation.navigate('Detail', { movie });
   };
 
-  const categoriesList = [
-    { id: 'all', name: '⚡ Sve' },
-    { id: 'gledajcrtace', name: '🎬 GledajCrtace.net' },
-    { id: 'popular', name: '🔥 Popularno' },
-    { id: 'disney', name: '🏰 Disney & Pixar' },
-    { id: 'classic', name: '⭐ Klasični' },
-    { id: 'series', name: '📺 Crtane Serije' }
-  ];
-
-  const featuredMovie = data.featured[0] || data.movies[0];
-
-  const filteredMovies = selectedCategory === 'all'
-    ? data.movies
-    : data.movies.filter((m) => m.tags && m.tags.includes(selectedCategory));
+  const moviesOnly = data.movies.filter(m => !m.tags || !m.tags.includes('series'));
+  const seriesOnly = data.movies.filter(m => m.tags && m.tags.includes('series'));
+  const gledajCrtaceOnly = data.movies.filter(m => m.tags && m.tags.includes('gledajcrtace'));
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor="#7B2CBF" />
-      }
-    >
-      {/* Featured Hero Banner */}
-      {featuredMovie && <HeroBanner movie={featuredMovie} onPlayPress={handleMoviePress} />}
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      {/* Top Search Input Bar (Stremio Header) */}
+      <View style={styles.searchBarWrapper}>
+        <View style={styles.searchBarContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Možete pretražiti bilo što..."
+            placeholderTextColor="#64748B"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={() => navigation.navigate('Search', { query: searchQuery })}
+          />
+          <TouchableOpacity onPress={() => navigation.navigate('Search', { query: searchQuery })}>
+            <Text style={styles.searchIcon}>🔍</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      {/* Continue Watching Row (Stremio Feature) */}
+      {/* Nastavi gledati (Continue Watching Row) */}
       {watchHistory.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>▶ Nastavi Gledanje</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Nastavi gledati</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Library')}>
+              <Text style={styles.vidiSve}>VIDI SVE ›</Text>
+            </TouchableOpacity>
+          </View>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -78,10 +75,12 @@ export default function HomeScreen({ navigation }) {
                 style={styles.historyCard}
               >
                 <Image source={{ uri: item.poster || item.backdrop }} style={styles.historyPoster} />
+                <View style={styles.checkmarkBadge}>
+                  <Text style={styles.checkmarkText}>✓</Text>
+                </View>
                 <View style={styles.progressBarBackground}>
                   <View style={[styles.progressBarFill, { width: `${(item.progress || 0.5) * 100}%` }]} />
                 </View>
-                <Text style={styles.historyTitle} numberOfLines={1}>{item.title}</Text>
               </TouchableOpacity>
             )}
             contentContainerStyle={styles.horizontalList}
@@ -89,51 +88,18 @@ export default function HomeScreen({ navigation }) {
         </View>
       )}
 
-      {/* Stremio Category Selector Bar */}
-      <View style={styles.categoryContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryList}>
-          {categoriesList.map((cat) => {
-            const isActive = selectedCategory === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() => setSelectedCategory(cat.id)}
-                activeOpacity={0.7}
-                style={[styles.categoryPill, isActive && styles.categoryPillActive]}
-              >
-                <Text style={[styles.categoryText, isActive && styles.categoryTextActive]}>
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Recommended Movies Row */}
-      {data.featured.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔥 Istaknuto & Sinhronizovano</Text>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={data.featured}
-            keyExtractor={(item, idx) => item.id || `feat-${idx}`}
-            renderItem={({ item, index }) => (
-              <MovieCard movie={item} onPress={handleMoviePress} hasPreferredFocus={index === 0 && isTV} />
-            )}
-            contentContainerStyle={styles.horizontalList}
-          />
-        </View>
-      )}
-
-      {/* Catalog Grid / Row */}
+      {/* Popularno - Film (Popular Movies Row) */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>✨ Kataloški Crtani Filmovi</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Popularno – Film</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Explore')}>
+            <Text style={styles.vidiSve}>VIDI SVE ›</Text>
+          </TouchableOpacity>
+        </View>
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={filteredMovies.length > 0 ? filteredMovies : data.movies}
+          data={moviesOnly.length > 0 ? moviesOnly : data.movies}
           keyExtractor={(item, idx) => item.id || `mov-${idx}`}
           renderItem={({ item }) => (
             <MovieCard movie={item} onPress={handleMoviePress} />
@@ -141,6 +107,48 @@ export default function HomeScreen({ navigation }) {
           contentContainerStyle={styles.horizontalList}
         />
       </View>
+
+      {/* Popularno - Serija (Popular Series Row) */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Popularno – Serija</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Explore')}>
+            <Text style={styles.vidiSve}>VIDI SVE ›</Text>
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={seriesOnly.length > 0 ? seriesOnly : data.movies}
+          keyExtractor={(item, idx) => item.id || `ser-${idx}`}
+          renderItem={({ item }) => (
+            <MovieCard movie={item} onPress={handleMoviePress} />
+          )}
+          contentContainerStyle={styles.horizontalList}
+        />
+      </View>
+
+      {/* GledajCrtace.net Kolekcija */}
+      {gledajCrtaceOnly.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>🎬 GledajCrtace.net Kolekcija</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Explore')}>
+              <Text style={styles.vidiSve}>VIDI SVE ›</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={gledajCrtaceOnly}
+            keyExtractor={(item, idx) => item.id || `gled-${idx}`}
+            renderItem={({ item }) => (
+              <MovieCard movie={item} onPress={handleMoviePress} />
+            )}
+            contentContainerStyle={styles.horizontalList}
+          />
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -148,81 +156,100 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#07080E'
+    backgroundColor: '#090A10'
   },
   scrollContent: {
-    paddingBottom: 40
+    paddingBottom: 80
   },
-  categoryContainer: {
-    marginVertical: isTV ? 20 : 12,
-    paddingLeft: isTV ? 32 : 16
+  searchBarWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#0D0E15'
   },
-  categoryList: {
-    paddingRight: 32,
-    gap: 10
-  },
-  categoryPill: {
-    backgroundColor: '#131525',
-    paddingHorizontal: isTV ? 20 : 14,
-    paddingVertical: isTV ? 10 : 8,
-    borderRadius: 20,
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#161823',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
     borderWidth: 1,
-    borderColor: '#242842'
+    borderColor: '#242736'
   },
-  categoryPillActive: {
-    backgroundColor: '#7B2CBF',
-    borderColor: '#9D4EDD'
-  },
-  categoryText: {
-    color: '#94A3B8',
-    fontSize: isTV ? 16 : 13,
-    fontWeight: '600'
-  },
-  categoryTextActive: {
+  searchInput: {
+    flex: 1,
     color: '#FFFFFF',
-    fontWeight: '700'
+    fontSize: 14,
+    paddingVertical: 0
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginLeft: 8
   },
   section: {
-    marginBottom: isTV ? 32 : 20,
-    paddingLeft: isTV ? 32 : 16
+    marginVertical: 14
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 10
   },
   sectionTitle: {
-    color: '#F8FAFC',
-    fontSize: isTV ? 22 : 16,
-    fontWeight: '800',
-    marginBottom: isTV ? 16 : 10,
+    color: '#FFFFFF',
+    fontSize: isTV ? 20 : 16,
+    fontWeight: '700'
+  },
+  vidiSve: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '700',
     letterSpacing: 0.5
   },
   horizontalList: {
-    paddingRight: 32
+    paddingLeft: 16,
+    paddingRight: 8
   },
   historyCard: {
-    width: isTV ? 220 : 160,
-    marginRight: isTV ? 20 : 14,
-    borderRadius: 10,
-    backgroundColor: '#111322',
+    width: isTV ? 160 : 120,
+    marginRight: 12,
+    borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#242842'
+    backgroundColor: '#161823',
+    position: 'relative'
   },
   historyPoster: {
     width: '100%',
-    height: isTV ? 120 : 90,
-    resizeMode: 'cover'
+    height: isTV ? 220 : 165,
+    borderRadius: 12
+  },
+  checkmarkBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#6C5CE7',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  checkmarkText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800'
   },
   progressBarBackground: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     height: 4,
-    backgroundColor: '#1E2238',
-    width: '100%'
+    backgroundColor: 'rgba(255, 255, 255, 0.2)'
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#7B2CBF'
-  },
-  historyTitle: {
-    color: '#E2E8F0',
-    fontSize: isTV ? 14 : 12,
-    fontWeight: '600',
-    padding: 8
+    backgroundColor: '#3B82F6'
   }
 });
