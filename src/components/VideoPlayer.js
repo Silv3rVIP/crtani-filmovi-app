@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { WebView } from 'react-native-webview'; // Fallback / embed support
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, StatusBar, Platform } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { isTV } from '../utils/device';
 
 function getRefererForUrl(url) {
@@ -27,6 +27,8 @@ function getRefererForUrl(url) {
 
 export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
   const [loading, setLoading] = useState(true);
+  const [key, setKey] = useState(1);
+  const webViewRef = useRef(null);
 
   // Normalize URL helper
   const normalizeUrl = (url) => {
@@ -48,9 +50,9 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
     return target;
   };
 
-  const [currentUrl, setCurrentUrl] = useState(normalizeUrl(embedUrl));
+  const currentUrl = normalizeUrl(embedUrl);
 
-  // Inject JavaScript to transform site and VK video embeds into a native edge-to-edge player, block ad popups, and auto-play
+  // Comprehensive Injected JavaScript to auto-trigger playback, promote player to fullscreen, and block ad popups
   const injectedJavaScript = `
     (function() {
       try {
@@ -59,7 +61,7 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           return { focus: function(){}, close: function(){} };
         };
         
-        // Neutralize click-jacking ad overlays and redirect links
+        // Neutralize click-jacking redirects
         document.addEventListener('click', function(e) {
           var target = e.target;
           var link = target ? target.closest('a') : null;
@@ -72,7 +74,8 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
               href.includes('popads') ||
               href.includes('doubleclick') ||
               href.includes('s.click') ||
-              href.includes('exoclick')
+              href.includes('exoclick') ||
+              href.includes('push-sdk')
             ) {
               e.preventDefault();
               e.stopPropagation();
@@ -84,137 +87,104 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           }
         }, true);
 
-        // Remove blocking ad overlays over the video player
-        function removeOverlays() {
-          var overlays = document.querySelectorAll('div[id*="pop"], div[class*="pop"], [class*="ad-overlay"], [id*="ad-overlay"]');
-          overlays.forEach(function(el) {
-            if (el && el.tagName !== 'VIDEO' && el.tagName !== 'IFRAME') {
-              try { el.remove(); } catch(err) {}
-            }
-          });
-        }
-
+        // Inject fullscreen player style
         var style = document.createElement('style');
-        style.id = 'native-player-fullscreen';
+        style.id = 'clean-native-player-fullscreen';
         style.innerHTML = \`
-          html, body, #root, #root > div {
+          html, body {
             background-color: #000000 !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: hidden !important;
-            width: 100% !important;
-            height: 100% !important;
+            width: 100vw !important;
+            height: 100vh !important;
           }
           
-          /* Hide non-video site chrome, titles, sidebars, uCoZ headers, menus, logins, ad banners, Cbox chat, and comments sections */
-          header, footer, nav, .navbar, .sidebar, #header, #footer, .site-header, .site-footer,
-          .top-header, .main-header, .film-desc, .breadcrumb, .social-share,
+          /* Hide unwanted site overlays, comments, chats and ad banners */
           .adsbygoogle, .ad-banner, .popunder, .popup,
-          .top-box, .header-box, .user-box, #header-bg, #header-top, .main-title, .entry-title, .title-box,
-          #ut-site-title, #ut-site-logo, .login-box, .user-login, #p-user, #cat-title, #p-title,
           #cbox, .cbox, #cboxdiv, [id*="cbox"], [class*="cbox"], iframe[src*="cbox"], iframe[src*="chat"],
-          #comments, .comments, .comments-tab, #com-list, .com-title, #add-comm,
-          .comment-block, #mComms, #com-add-form, .comm-body, .comm-rec, .u-comm, #soc-comments,
-          iframe[src*="newsletter"], iframe[src*="campaign"], iframe[id*="iFb"], iframe[src*="facebook"], iframe[src*="comments"],
-          .mv_title, .mv_author, .mv_info, .mv_actions, .videoplayer_top, .videoplayer_title,
-          .VideoPage__leftColumn, .VideoPage__rightColumn, .HeaderNav, .SideMenu {
+          #comments, .comments, .comments-tab, #com-list, #mComms, #com-add-form,
+          iframe[src*="newsletter"], iframe[src*="facebook"], iframe[src*="comments"] {
             display: none !important;
             visibility: hidden !important;
             height: 0 !important;
             width: 0 !important;
-            opacity: 0 !important;
             pointer-events: none !important;
           }
 
-          /* Force ONLY video & player engines and containers to fill screen */
-          video, .jwplayer, .video-js, #vplayer, #player, .player-container, #player-frame, .vjs-tech, .jw-wrapper, .jw-media, #root video, #root iframe,
-          iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="embed"] {
-            position: absolute !important;
+          /* Force Video / Iframe Player to fill viewport */
+          #player-frame, .content-player, #vplayer, #player, .player-container, .watching-player,
+          video, .jwplayer, .video-js,
+          iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="strp2p"] {
+            position: fixed !important;
             top: 0 !important;
             left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            border: none !important;
-            outline: none !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 999999 !important;
             background: #000000 !important;
-            object-fit: contain !important;
+            border: none !important;
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
           }
         \`;
-        if (!document.getElementById('native-player-fullscreen')) {
+        if (!document.getElementById('clean-native-player-fullscreen')) {
           document.head.appendChild(style);
         }
 
-        function enforceNativeLayout() {
-          removeOverlays();
+        // Auto trigger server & play buttons
+        function triggerPlayer() {
+          // 1. Click Lena cover & player activation links
+          var lenaPlay = document.querySelector('#player-frame > a, #frame-cover, .film-play, .btn-play, .play-btn, .pv_play_btn, .videoplayer_play');
+          if (lenaPlay) {
+            try { lenaPlay.click(); } catch(e){}
+          }
 
-          // Destroy Cbox chat, comments & social blocks dynamically
-          var comms = document.querySelectorAll('#cbox, .cbox, #cboxdiv, [id*="cbox"], [class*="cbox"], iframe[src*="cbox"], iframe[src*="chat"], #comments, .comments, [class*="comment"], [id*="comment"], #com-list, #mComms');
-          comms.forEach(function(c) {
-            try {
-              c.style.setProperty('display', 'none', 'important');
-              c.style.setProperty('visibility', 'hidden', 'important');
-              c.style.setProperty('opacity', '0', 'important');
-              c.style.setProperty('height', '0px', 'important');
-              c.style.setProperty('pointer-events', 'none', 'important');
-            } catch(e) {}
+          // 2. Click player server options if iframe is blank
+          var serverOpts = document.querySelectorAll('.do-player-option, #player-option-1, [data-type="movie_iframe_link"], .options-player li');
+          serverOpts.forEach(function(btn) {
+            try { btn.click(); } catch(e){}
           });
 
-          // Promote real video engines, video tags & player iframes inside WebView
-          var playerEngines = document.querySelectorAll('video, .jwplayer, .video-js, #vplayer, #player, .player, .vjs-tech, .jw-wrapper, iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="embed"], iframe');
-          playerEngines.forEach(function(el) {
-            if (el.tagName === 'VIDEO' || (el.src && !el.src.includes('cbox') && !el.src.includes('facebook') && !el.src.includes('chat')) || (el.classList && el.classList.contains('jwplayer')) || el.id === 'vplayer') {
-              el.style.setProperty('position', 'absolute', 'important');
-              el.style.setProperty('top', '0px', 'important');
-              el.style.setProperty('left', '0px', 'important');
-              el.style.setProperty('width', '100%', 'important');
-              el.style.setProperty('height', '100%', 'important');
-              el.style.setProperty('display', 'block', 'important');
-              el.style.setProperty('visibility', 'visible', 'important');
-              el.style.setProperty('opacity', '1', 'important');
-            }
-          });
-          var iframes = document.querySelectorAll('iframe');
-          iframes.forEach(function(f) {
-            if (!f.src || f.src === 'about:blank' || f.src.includes('about:blank')) {
-              var sBtn = document.querySelector('.do-player-option, #player-option-1, [data-type="movie_iframe_link"], .options-player li');
-              if (sBtn) { try { sBtn.click(); } catch(e) {} }
-            }
-          });
-
-          // Auto-click security verification buttons (e.g. send.now / send.cm / Cloudflare security check)
+          // 3. Auto click verification buttons (e.g. send.cm, verify, proceed)
           var buttons = document.querySelectorAll('button, a, div, span, input[type="submit"]');
           buttons.forEach(function(btn) {
             var txt = (btn.innerText || btn.value || '').trim().toUpperCase();
             if (txt === 'CONTINUE' || txt === 'PROCEED' || txt === 'VERIFY' || txt === 'GLEDAJ FILM') {
-              try { btn.click(); } catch(e) {}
+              try { btn.click(); } catch(e){}
             }
           });
 
-          var playBtn = document.querySelector('#frame-cover, #player-frame > a, .film-play, .btn-play, .play-btn, .pv_play_btn, .videoplayer_play, .jw-icon-playback, .vjs-big-play-button');
-          if (playBtn) { 
-            try { playBtn.click(); } catch(e) {}
-          }
-
+          // 4. Play video tags if paused
           var vids = document.querySelectorAll('video');
           vids.forEach(function(v) {
             try {
-              v.style.setProperty('width', '100%', 'important');
-              v.style.setProperty('height', '100%', 'important');
+              v.style.setProperty('width', '100vw', 'important');
+              v.style.setProperty('height', '100vh', 'important');
               if (v.paused && typeof v.play === 'function') {
                 var p = v.play();
-                if (p && typeof p.catch === 'function') {
-                  p.catch(function(){});
-                }
+                if (p && typeof p.catch === 'function') p.catch(function(){});
               }
             } catch(err){}
           });
+
+          // 5. Expand iframes inside the player
+          var iframes = document.querySelectorAll('iframe');
+          iframes.forEach(function(f) {
+            if (f.src && !f.src.includes('about:blank') && !f.src.includes('cbox') && !f.src.includes('facebook')) {
+              f.style.setProperty('position', 'fixed', 'important');
+              f.style.setProperty('top', '0px', 'important');
+              f.style.setProperty('left', '0px', 'important');
+              f.style.setProperty('width', '100vw', 'important');
+              f.style.setProperty('height', '100vh', 'important');
+              f.style.setProperty('z-index', '999999', 'important');
+            }
+          });
         }
 
-        enforceNativeLayout();
-        setInterval(enforceNativeLayout, 500);
+        triggerPlayer();
+        setInterval(triggerPlayer, 600);
       } catch(e) {}
     })();
     true;
@@ -222,7 +192,9 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Header bar */}
+      <StatusBar hidden={true} />
+
+      {/* Top Floating Control Bar */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.closeButton}
@@ -233,20 +205,33 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
               navigation.goBack();
             }
           }}
-          activeOpacity={0.6}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          activeOpacity={0.7}
           hasTVPreferredFocus={true}
         >
-          <Text style={styles.closeButtonText}>✕ Nazad</Text>
+          <Text style={styles.closeButtonText}>‹ Nazad</Text>
         </TouchableOpacity>
+
         <Text style={styles.title} numberOfLines={1}>
-          {title}
+          {title || 'Sinhronizovani Crtani'}
         </Text>
+
+        <TouchableOpacity
+          style={styles.reloadButton}
+          onPress={() => {
+            setLoading(true);
+            setKey(prev => prev + 1);
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.reloadButtonText}>🔄 Osvježi</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Video Player WebView */}
+      {/* Video Player Engine */}
       <View style={styles.playerWrapper}>
         <WebView
+          key={key}
+          ref={webViewRef}
           originWhitelist={['*']}
           source={{
             uri: currentUrl,
@@ -257,7 +242,10 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           }}
           style={styles.webview}
           onLoadStart={() => setLoading(true)}
-          onLoadEnd={() => setLoading(false)}
+          onLoadEnd={() => {
+            // Keep small 1.5s timer before dismissing indicator to allow player DOM render
+            setTimeout(() => setLoading(false), 1500);
+          }}
           setSupportMultipleWindows={false}
           mixedContentMode="always"
           allowFileAccess={true}
@@ -274,17 +262,17 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
           onShouldStartLoadWithRequest={(request) => {
             const url = request.url.toLowerCase();
-            // Block top frame popup redirects only (e.g. AliExpress, Adsterra)
+            // Block ad popup redirects
             if (
               request.isTopFrame &&
               (
                 url.includes('aliexpress') ||
                 url.includes('adsterra') ||
                 url.includes('popunder') ||
-                url.includes('popads')
+                url.includes('popads') ||
+                url.includes('push-sdk')
               )
             ) {
-              console.log('Blocked ad popup:', url);
               return false;
             }
             return true;
@@ -294,12 +282,12 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
             setLoading(false);
           }}
           injectedJavaScript={injectedJavaScript}
-          userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
         />
+
         {loading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#00E5FF" />
-            <Text style={styles.loadingText}>Učitavanje videa...</Text>
+            <ActivityIndicator size="large" color="#6C5CE7" />
+            <Text style={styles.loadingText}>Priprema i pokretanje crtanog filma...</Text>
           </View>
         )}
       </View>
@@ -313,8 +301,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000'
   },
   header: {
-    height: isTV ? 64 : 54,
-    backgroundColor: '#0F0F1A',
+    height: isTV ? 60 : 50,
+    backgroundColor: 'rgba(15, 15, 26, 0.95)',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -324,42 +312,57 @@ const styles = StyleSheet.create({
     borderBottomColor: '#1E1E2C'
   },
   closeButton: {
-    backgroundColor: '#FF2A6D',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    backgroundColor: '#6C5CE7',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
-    marginRight: 16,
-    zIndex: 100000,
-    elevation: 25
+    marginRight: 14,
+    elevation: 10
   },
   closeButtonText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: isTV ? 16 : 14
   },
   title: {
-    color: '#E2E8F0',
-    fontSize: isTV ? 20 : 16,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: isTV ? 18 : 15,
+    fontWeight: '700',
     flex: 1
+  },
+  reloadButton: {
+    backgroundColor: '#1E1E2C',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2D3047'
+  },
+  reloadButtonText: {
+    color: '#CBD5E1',
+    fontSize: isTV ? 14 : 12,
+    fontWeight: '700'
   },
   playerWrapper: {
     flex: 1,
-    position: 'relative'
+    position: 'relative',
+    backgroundColor: '#000000'
   },
   webview: {
     flex: 1,
-    backgroundColor: '#000'
+    backgroundColor: '#000000'
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0A0A12',
+    backgroundColor: 'rgba(10, 10, 18, 0.92)',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    zIndex: 99998
   },
   loadingText: {
-    color: '#94A3B8',
-    marginTop: 12,
-    fontSize: isTV ? 16 : 14
+    color: '#CBD5E1',
+    marginTop: 14,
+    fontSize: isTV ? 16 : 14,
+    fontWeight: '600'
   }
 });
