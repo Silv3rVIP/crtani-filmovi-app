@@ -27,6 +27,7 @@
     "axios": "^1.19.0",
     "cheerio": "^1.2.0",
     "expo": "^57.0.13",
+    "expo-dev-client": "~57.0.13",
     "expo-splash-screen": "~57.0.6",
     "react": "19.2.3",
     "react-native": "^0.86.2",
