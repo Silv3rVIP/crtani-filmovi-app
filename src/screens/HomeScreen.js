@@ -68,7 +68,7 @@ export default function HomeScreen({ navigation }) {
             horizontal
             showsHorizontalScrollIndicator={false}
             data={watchHistory}
-            keyExtractor={(item, idx) => item.id || `hist-${idx}`}
+            keyExtractor={(item, idx) => item?.id ? `hist-${item.id}-${idx}` : `hist-${idx}`}
             renderItem={({ item }) => (
               <TouchableOpacity
                 activeOpacity={0.8}
@@ -101,7 +101,7 @@ export default function HomeScreen({ navigation }) {
           horizontal
           showsHorizontalScrollIndicator={false}
           data={moviesOnly.length > 0 ? moviesOnly : data.movies}
-          keyExtractor={(item, idx) => item.id || `mov-${idx}`}
+          keyExtractor={(item, idx) => item?.id ? `mov-${item.id}-${idx}` : `mov-${idx}`}
           renderItem={({ item }) => (
             <MovieCard movie={item} onPress={handleMoviePress} />
           )}
@@ -121,7 +121,7 @@ export default function HomeScreen({ navigation }) {
           horizontal
           showsHorizontalScrollIndicator={false}
           data={seriesOnly.length > 0 ? seriesOnly : data.movies}
-          keyExtractor={(item, idx) => item.id || `ser-${idx}`}
+          keyExtractor={(item, idx) => item?.id ? `ser-${item.id}-${idx}` : `ser-${idx}`}
           renderItem={({ item }) => (
             <MovieCard movie={item} onPress={handleMoviePress} />
           )}
@@ -142,7 +142,7 @@ export default function HomeScreen({ navigation }) {
             horizontal
             showsHorizontalScrollIndicator={false}
             data={gledajCrtaceOnly}
-            keyExtractor={(item, idx) => item.id || `gled-${idx}`}
+            keyExtractor={(item, idx) => item?.id ? `gled-${item.id}-${idx}` : `gled-${idx}`}
             renderItem={({ item }) => (
               <MovieCard movie={item} onPress={handleMoviePress} />
             )}
