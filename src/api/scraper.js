@@ -1,4 +1,5 @@
 import { cacheManager } from '../services/cacheManager.js';
+import cartoonsDb from '../data/cartoons_db.json';
 
 const BASE_URL = 'https://crtanifilmovielena.com';
 
@@ -416,11 +417,19 @@ async function fetchHomePageDataRaw() {
       }
     }
 
-    // Merge gledajcrtace.net movies
-    if (Array.isArray(gledajCrtaceMovies)) {
-      for (const item of gledajCrtaceMovies) {
-        if (!movies.some(m => m.title.toLowerCase() === item.title.toLowerCase())) {
-          movies.push(item);
+    // Merge cartoonsDb structured dataset items
+    if (Array.isArray(cartoonsDb)) {
+      for (const item of cartoonsDb) {
+        const itemTitle = item.rawTitle || `${item.titleEnglish} – ${item.titleBosnian}`;
+        if (!movies.some(m => m.id === item.id || m.title.toLowerCase() === itemTitle.toLowerCase())) {
+          movies.push({
+            id: item.id,
+            url: item.streamUrl || item.sourceUrl,
+            title: itemTitle,
+            poster: item.poster,
+            backdrop: item.backdrop || item.poster,
+            tags: ['all', item.sourceSite, item.type, item.dubbingType, ...assignCategoryTags(itemTitle, item.id)]
+          });
         }
       }
     }
