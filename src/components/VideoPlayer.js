@@ -52,94 +52,60 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
 
   const currentUrl = normalizeUrl(embedUrl);
 
-  // Safe Multi-Frame Injected Auto-Play Script
+  // Autonomous Multi-Phase Playback Engine
   const safeAutoPlayScript = `
     (function() {
       try {
-        // Block window.open popups safely
+        // Block popup windows & redirects
         try {
           window.open = function() { return { focus: function(){}, close: function(){} }; };
         } catch(e){}
 
-        // Inject Fullscreen Style safely after document is ready
-        function injectPlayerStyle() {
+        // Trigger Phase 1: Trigger Lena / StariCrtaci AJAX player loading immediately
+        function triggerAjaxPlayer() {
           try {
-            if (!document || (!document.head && !document.body)) return;
-            if (document.getElementById('clean-fullscreen-style')) return;
-            
-            var style = document.createElement('style');
-            style.id = 'clean-fullscreen-style';
-            style.innerHTML = \`
-              html, body {
-                background-color: #000000 !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                overflow: hidden !important;
-                width: 100vw !important;
-                height: 100vh !important;
-              }
-              .adsbygoogle, .ad-banner, .popunder, .popup,
-              #cbox, .cbox, #cboxdiv, [id*="cbox"], [class*="cbox"],
-              #comments, .comments, .comments-tab, #com-list, #mComms,
-              iframe[src*="newsletter"], iframe[src*="facebook"], iframe[src*="comments"], iframe[src*="cbox"] {
-                display: none !important;
-                visibility: hidden !important;
-                height: 0 !important;
-                width: 0 !important;
-                pointer-events: none !important;
-              }
-              #player-frame, .content-player, #vplayer, #player, .player-container, .watching-player,
-              video, .jwplayer, .video-js,
-              iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="strp2p"] {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                z-index: 999999 !important;
-                background: #000000 !important;
-                border: none !important;
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-              }
-            \`;
-            if (document.head) {
-              document.head.appendChild(style);
-            } else if (document.body) {
-              document.body.appendChild(style);
+            if (window.jQuery) {
+              window.jQuery('#frame-cover').trigger('click');
+              window.jQuery('#player-frame > a').trigger('click');
+              window.jQuery('.film-play').trigger('click');
+              window.jQuery('.do-player-option').trigger('click');
+              window.jQuery('#player-option-1').trigger('click');
+            }
+          } catch(e){}
+
+          try {
+            var cover = document.querySelector('#frame-cover, #player-frame > a, .film-play, .btn-play');
+            if (cover) {
+              cover.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+              if (typeof cover.click === 'function') cover.click();
             }
           } catch(e){}
         }
 
-        function safeClick(el) {
-          if (!el) return;
-          try {
-            var opts = { bubbles: true, cancelable: true, view: window };
-            el.dispatchEvent(new MouseEvent('mousedown', opts));
-            el.dispatchEvent(new MouseEvent('mouseup', opts));
-            el.dispatchEvent(new MouseEvent('click', opts));
-            if (typeof el.click === 'function') el.click();
-          } catch(e){}
-        }
+        // Trigger Phase 2: Autonomous Play within video player and iframe
+        function triggerPlayback() {
+          triggerAjaxPlayer();
 
-        // Periodic trigger for play buttons & video tags
-        function runAutoPlay() {
-          injectPlayerStyle();
-
-          // 1. Click Lena / StariCrtaci play triggers & options
+          // Target all play buttons, circular SVG icons, and wrappers
           try {
-            var triggers = document.querySelectorAll(
-              '#frame-cover, #player-frame > a, .film-play, .btn-play, .play-btn, .pv_play_btn, .videoplayer_play, ' +
-              '.do-player-option, #player-option-1, [data-type="movie_iframe_link"], .options-player li, ' +
+            var playElements = document.querySelectorAll(
+              '#vplayer, .play-wrapper, .play-button, .play-btn, .pv_play_btn, .videoplayer_play, ' +
               '.vjs-big-play-button, .jw-display-icon-container, .jw-icon-display, .jw-preview, ' +
               '[class*="play-button"], [class*="play-icon"], [class*="play"], [id*="play"], button[title*="Play"], ' +
-              'svg, path, polygon, canvas'
+              'svg, polygon, canvas, button'
             );
-            triggers.forEach(function(t) { safeClick(t); });
+            playElements.forEach(function(el) {
+              try {
+                var opts = { bubbles: true, cancelable: true, view: window };
+                el.dispatchEvent(new MouseEvent('mousedown', opts));
+                el.dispatchEvent(new MouseEvent('mouseup', opts));
+                el.dispatchEvent(new MouseEvent('click', opts));
+                if (typeof el.click === 'function') el.click();
+              } catch(err){}
+            });
           } catch(e){}
 
-          // 2. Play HTML5 videos
+          // Target HTML5 Video elements and force unmuted play
           try {
             var vids = document.querySelectorAll('video');
             vids.forEach(function(v) {
@@ -159,27 +125,51 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
             });
           } catch(e){}
 
-          // 3. Virtual Center Tap (Center & Center-Right)
+          // Virtual Tap at Center & Center-Right coordinates
           try {
-            var coords = [[0.5, 0.5], [0.75, 0.35], [0.70, 0.30]];
-            coords.forEach(function(c) {
+            var tapPoints = [[0.5, 0.5], [0.75, 0.35], [0.70, 0.30]];
+            tapPoints.forEach(function(pt) {
               try {
-                var el = document.elementFromPoint(window.innerWidth * c[0], window.innerHeight * c[1]);
+                var x = window.innerWidth * pt[0];
+                var y = window.innerHeight * pt[1];
+                var el = document.elementFromPoint(x, y);
                 if (el && el.tagName !== 'HTML' && el.tagName !== 'BODY') {
-                  safeClick(el);
+                  var opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                  el.dispatchEvent(new MouseEvent('mousedown', opts));
+                  el.dispatchEvent(new MouseEvent('mouseup', opts));
+                  el.dispatchEvent(new MouseEvent('click', opts));
+                  if (typeof el.click === 'function') el.click();
                 }
               } catch(err){}
             });
           } catch(e){}
+
+          // Promote active iframe to full viewport
+          try {
+            var iframes = document.querySelectorAll('iframe');
+            iframes.forEach(function(f) {
+              if (f.src && !f.src.includes('about:blank') && !f.src.includes('cbox') && !f.src.includes('facebook')) {
+                f.style.setProperty('position', 'fixed', 'important');
+                f.style.setProperty('top', '0px', 'important');
+                f.style.setProperty('left', '0px', 'important');
+                f.style.setProperty('width', '100vw', 'important');
+                f.style.setProperty('height', '100vh', 'important');
+                f.style.setProperty('z-index', '999999', 'important');
+                f.style.setProperty('background', '#000000', 'important');
+                f.style.setProperty('border', 'none', 'important');
+              }
+            });
+          } catch(e){}
         }
 
-        runAutoPlay();
-        var timer = setInterval(runAutoPlay, 500);
+        // Run immediately and pulse every 400ms
+        triggerPlayback();
+        var timer = setInterval(triggerPlayback, 400);
 
         setTimeout(function() {
           clearInterval(timer);
-          setInterval(runAutoPlay, 2000);
-        }, 10000);
+          setInterval(triggerPlayback, 2000);
+        }, 12000);
 
       } catch(e){}
     })();
