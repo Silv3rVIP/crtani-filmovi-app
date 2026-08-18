@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, StatusBar, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, StatusBar } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { isTV } from '../utils/device';
 
@@ -52,7 +52,7 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
 
   const currentUrl = normalizeUrl(embedUrl);
 
-  // Comprehensive Injected JavaScript to auto-trigger playback, promote player to fullscreen, and block ad popups
+  // Advanced Autonomous Video Playback & Auto-Clicker Engine for Android TV
   const injectedJavaScript = `
     (function() {
       try {
@@ -133,43 +133,53 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           document.head.appendChild(style);
         }
 
-        // Auto trigger server & play buttons
-        function triggerPlayer() {
-          // 1. Click Lena cover & player activation links
-          var lenaPlay = document.querySelector('#player-frame > a, #frame-cover, .film-play, .btn-play, .play-btn, .pv_play_btn, .videoplayer_play');
-          if (lenaPlay) {
-            try { lenaPlay.click(); } catch(e){}
-          }
+        // Helper to dispatch synthetic full user click sequence (Touch, Pointer & Mouse)
+        function simulateRealClick(element) {
+          if (!element) return;
+          try {
+            var rect = element.getBoundingClientRect();
+            var cx = rect.left + rect.width / 2;
+            var cy = rect.top + rect.height / 2;
 
-          // 2. Click player server options if iframe is blank
-          var serverOpts = document.querySelectorAll('.do-player-option, #player-option-1, [data-type="movie_iframe_link"], .options-player li');
-          serverOpts.forEach(function(btn) {
-            try { btn.click(); } catch(e){}
-          });
-
-          // 3. Auto click verification buttons (e.g. send.cm, verify, proceed)
-          var buttons = document.querySelectorAll('button, a, div, span, input[type="submit"]');
-          buttons.forEach(function(btn) {
-            var txt = (btn.innerText || btn.value || '').trim().toUpperCase();
-            if (txt === 'CONTINUE' || txt === 'PROCEED' || txt === 'VERIFY' || txt === 'GLEDAJ FILM') {
-              try { btn.click(); } catch(e){}
+            var opts = { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy };
+            
+            // Pointer & Mouse sequence
+            element.dispatchEvent(new MouseEvent('mousedown', opts));
+            element.dispatchEvent(new MouseEvent('mouseup', opts));
+            element.dispatchEvent(new MouseEvent('click', opts));
+            
+            // Native click
+            if (typeof element.click === 'function') {
+              element.click();
             }
+          } catch(e) {}
+        }
+
+        // Autonomous Playback Trigger Loop
+        function triggerAutonomousPlay() {
+          // 1. Layer 1: Lena & StariCrtaci outer play buttons & cover overlays
+          var primaryTriggers = document.querySelectorAll('#frame-cover, #player-frame > a, .film-play, .btn-play, .play-btn, .pv_play_btn, .videoplayer_play, .do-player-option, #player-option-1, [data-type="movie_iframe_link"], .options-player li');
+          primaryTriggers.forEach(function(btn) {
+            simulateRealClick(btn);
           });
 
-          // 4. Play video tags if paused
-          var vids = document.querySelectorAll('video');
-          vids.forEach(function(v) {
-            try {
-              v.style.setProperty('width', '100vw', 'important');
-              v.style.setProperty('height', '100vh', 'important');
-              if (v.paused && typeof v.play === 'function') {
-                var p = v.play();
-                if (p && typeof p.catch === 'function') p.catch(function(){});
-              }
-            } catch(err){}
+          // 2. Layer 2: Embedded player controls (JWPlayer, Video.js, HTML5 video play overlays)
+          var playerButtons = document.querySelectorAll('.vjs-big-play-button, .jw-display-icon-container, .jw-icon-display, .jw-preview, [class*="play-button"], [aria-label*="Play"], [aria-label*="Pusti"], button[title*="Play"], .play-wrapper, .play-icon, #player_play');
+          playerButtons.forEach(function(pBtn) {
+            simulateRealClick(pBtn);
           });
 
-          // 5. Expand iframes inside the player
+          // 3. Layer 3: Virtual Center Screen Click (Triggers centered canvas / SVG play buttons)
+          try {
+            var centerX = window.innerWidth / 2;
+            var centerY = window.innerHeight / 2;
+            var centerElem = document.elementFromPoint(centerX, centerY);
+            if (centerElem && centerElem.tagName !== 'HTML' && centerElem.tagName !== 'BODY') {
+              simulateRealClick(centerElem);
+            }
+          } catch(e) {}
+
+          // 4. Layer 4: Deep iframe traversal for inner players
           var iframes = document.querySelectorAll('iframe');
           iframes.forEach(function(f) {
             if (f.src && !f.src.includes('about:blank') && !f.src.includes('cbox') && !f.src.includes('facebook')) {
@@ -179,12 +189,60 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
               f.style.setProperty('width', '100vw', 'important');
               f.style.setProperty('height', '100vh', 'important');
               f.style.setProperty('z-index', '999999', 'important');
+
+              // If iframe is accessible, trigger inner play buttons
+              try {
+                var doc = f.contentDocument || (f.contentWindow ? f.contentWindow.document : null);
+                if (doc) {
+                  var innerBtns = doc.querySelectorAll('.vjs-big-play-button, .jw-display-icon-container, video, [class*="play"], button');
+                  innerBtns.forEach(function(ib) {
+                    simulateRealClick(ib);
+                  });
+                  var innerVids = doc.querySelectorAll('video');
+                  innerVids.forEach(function(iv) {
+                    if (iv.paused && typeof iv.play === 'function') {
+                      var p = iv.play();
+                      if (p && typeof p.catch === 'function') p.catch(function(){});
+                    }
+                  });
+                }
+              } catch(crossErr) {}
+            }
+          });
+
+          // 5. Layer 5: HTML5 Video Elements Auto-Play Watcher
+          var vids = document.querySelectorAll('video');
+          vids.forEach(function(v) {
+            try {
+              v.style.setProperty('width', '100vw', 'important');
+              v.style.setProperty('height', '100vh', 'important');
+              if (v.paused && typeof v.play === 'function') {
+                var p = v.play();
+                if (p && typeof p.catch === 'function') p.catch(function(){});
+              }
+            } catch(err) {}
+          });
+
+          // 6. Layer 6: Security Verification and Continue Buttons
+          var buttons = document.querySelectorAll('button, a, div, span, input[type="submit"]');
+          buttons.forEach(function(btn) {
+            var txt = (btn.innerText || btn.value || '').trim().toUpperCase();
+            if (txt === 'CONTINUE' || txt === 'PROCEED' || txt === 'VERIFY' || txt === 'GLEDAJ FILM') {
+              simulateRealClick(btn);
             }
           });
         }
 
-        triggerPlayer();
-        setInterval(triggerPlayer, 600);
+        // Execute immediately and pulse regularly to catch async dynamic player injection
+        triggerAutonomousPlay();
+        var autoInterval = setInterval(triggerAutonomousPlay, 400);
+
+        // Slow down pulse after video successfully starts playing
+        setTimeout(function() {
+          clearInterval(autoInterval);
+          setInterval(triggerAutonomousPlay, 1500);
+        }, 8000);
+
       } catch(e) {}
     })();
     true;
@@ -243,8 +301,7 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           style={styles.webview}
           onLoadStart={() => setLoading(true)}
           onLoadEnd={() => {
-            // Keep small 1.5s timer before dismissing indicator to allow player DOM render
-            setTimeout(() => setLoading(false), 1500);
+            setTimeout(() => setLoading(false), 1200);
           }}
           setSupportMultipleWindows={false}
           mixedContentMode="always"
