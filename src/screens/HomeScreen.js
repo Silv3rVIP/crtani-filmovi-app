@@ -34,6 +34,7 @@ export default function HomeScreen({ navigation }) {
   const moviesOnly = data.popularMovies.length > 0 ? data.popularMovies : data.all;
   const seriesOnly = data.cartoonSeries.length > 0 ? data.cartoonSeries : data.all;
   const exYuOnly = data.exYuClassics.length > 0 ? data.exYuClassics : data.all;
+  const gledajCrtaceOnly = data.dubbedCartoons.length > 0 ? data.dubbedCartoons : data.all;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
