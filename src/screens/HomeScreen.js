@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, FlatList, StyleSheet, TouchableOpacity, Image, TextInput } from 'react-native';
-import { fetchHomePageData } from '../api/scraper';
+import { firebaseService } from '../services/firebase';
 import MovieCard from '../components/MovieCard';
 import { isTV } from '../utils/device';
 import { watchHistoryManager } from '../services/watchHistoryManager';
 
 export default function HomeScreen({ navigation }) {
-  const [data, setData] = useState({ featured: [], movies: [], categories: [] });
+  const [data, setData] = useState({ featured: [], popularMovies: [], cartoonSeries: [], exYuClassics: [], dubbedCartoons: [], all: [] });
   const [watchHistory, setWatchHistory] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = async () => {
-    const result = await fetchHomePageData();
-    if (result && (result.movies.length > 0 || result.featured.length > 0)) {
+    const result = await firebaseService.getHomePageCategories();
+    if (result) {
       setData(result);
     }
     const history = watchHistoryManager.getHistory();
@@ -31,9 +31,9 @@ export default function HomeScreen({ navigation }) {
     navigation.navigate('Detail', { movie });
   };
 
-  const moviesOnly = data.movies.filter(m => !m.tags || !m.tags.includes('series'));
-  const seriesOnly = data.movies.filter(m => m.tags && m.tags.includes('series'));
-  const gledajCrtaceOnly = data.movies.filter(m => m.tags && m.tags.includes('gledajcrtace'));
+  const moviesOnly = data.popularMovies.length > 0 ? data.popularMovies : data.all;
+  const seriesOnly = data.cartoonSeries.length > 0 ? data.cartoonSeries : data.all;
+  const exYuOnly = data.exYuClassics.length > 0 ? data.exYuClassics : data.all;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>

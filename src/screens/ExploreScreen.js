@@ -1,40 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import MovieCard from '../components/MovieCard';
-import { fetchHomePageData } from '../api/scraper';
+import { firebaseService } from '../services/firebase';
 import { isTV } from '../utils/device';
 
 export default function ExploreScreen({ navigation }) {
   const [movies, setMovies] = useState([]);
-  const [selectedType, setSelectedType] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+
+  const loadBatch = async (reset = false) => {
+    if (loading) return;
+    if (!reset && !hasMore) return;
+
+    setLoading(true);
+    const currentOffset = reset ? 0 : offset;
+    const res = await firebaseService.getPaginatedCartoons(30, currentOffset, selectedFilter);
+
+    if (res) {
+      if (reset) {
+        setMovies(res.items);
+        setOffset(30);
+      } else {
+        setMovies(prev => [...prev, ...res.items]);
+        setOffset(prev => prev + 30);
+      }
+      setHasMore(res.hasMore);
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    async function loadExploreData() {
-      const res = await fetchHomePageData();
-      if (res && res.movies) {
-        setMovies(res.movies);
-      }
-    }
-    loadExploreData();
-  }, []);
+    loadBatch(true);
+  }, [selectedFilter]);
 
-  const filteredMovies = movies.filter(m => {
-    if (selectedType === 'movies') return !m.tags || !m.tags.includes('series');
-    if (selectedType === 'series') return m.tags && m.tags.includes('series');
-    return true;
-  });
+  const handleFilterToggle = () => {
+    if (selectedFilter === 'all') setSelectedFilter('dugi_crtani');
+    else if (selectedFilter === 'dugi_crtani') setSelectedFilter('serija');
+    else if (selectedFilter === 'serija') setSelectedFilter('sinhronizovano');
+    else if (selectedFilter === 'sinhronizovano') setSelectedFilter('staricrtaci');
+    else setSelectedFilter('all');
+  };
+
+  const getFilterLabel = () => {
+    if (selectedFilter === 'dugi_crtani') return 'Dugi Filmovi ▾';
+    if (selectedFilter === 'serija') return 'Crtane Serije ▾';
+    if (selectedFilter === 'sinhronizovano') return 'Sinhronizovano ▾';
+    if (selectedFilter === 'staricrtaci') return 'Stari Crtani ▾';
+    return 'Sve ▾';
+  };
 
   return (
     <View style={styles.container}>
-      {/* Top Dropdowns Bar */}
+      {/* Top Filter Bar */}
       <View style={styles.filterBar}>
-        <TouchableOpacity
-          style={[styles.filterDropdown, selectedType !== 'all' && styles.filterDropdownActive]}
-          onPress={() => setSelectedType(selectedType === 'movies' ? 'series' : selectedType === 'series' ? 'all' : 'movies')}
-        >
-          <Text style={styles.filterText}>
-            {selectedType === 'movies' ? 'Filmovi ▾' : selectedType === 'series' ? 'Crtane Serije ▾' : 'Sve ▾'}
-          </Text>
+        <TouchableOpacity style={[styles.filterDropdown, selectedFilter !== 'all' && styles.filterDropdownActive]} onPress={handleFilterToggle}>
+          <Text style={styles.filterText}>{getFilterLabel()}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.filterDropdown}>
@@ -46,9 +69,9 @@ export default function ExploreScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* 3-Column Poster Grid */}
+      {/* 3-Column Paginated Poster Grid */}
       <FlatList
-        data={filteredMovies}
+        data={movies}
         numColumns={3}
         keyExtractor={(item, idx) => item.id || `exp-${idx}`}
         renderItem={({ item }) => (
@@ -57,6 +80,9 @@ export default function ExploreScreen({ navigation }) {
           </View>
         )}
         contentContainerStyle={styles.gridContent}
+        onEndReached={() => loadBatch(false)}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loading ? <ActivityIndicator size="large" color="#6C5CE7" style={{ marginVertical: 20 }} /> : null}
       />
     </View>
   );
