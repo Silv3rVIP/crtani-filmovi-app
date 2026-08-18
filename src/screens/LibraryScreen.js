@@ -27,7 +27,7 @@ export default function LibraryScreen({ navigation }) {
         <FlatList
           data={history}
           numColumns={3}
-          keyExtractor={(item, idx) => item.id || `lib-${idx}`}
+          keyExtractor={(item, idx) => `lib-${item?.id || 'card'}-${idx}`}
           renderItem={({ item }) => (
             <View style={styles.gridItem}>
               <MovieCard movie={item} onPress={(m) => navigation.navigate('Detail', { movie: m })} />

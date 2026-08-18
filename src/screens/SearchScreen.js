@@ -45,7 +45,7 @@ export default function SearchScreen({ navigation }) {
       ) : (
         <FlatList
           data={results}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, idx) => `srch-${item?.id || 'doc'}-${idx}`}
           numColumns={isTV ? 4 : 2}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (

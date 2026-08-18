@@ -87,7 +87,7 @@ export default function ExploreScreen({ navigation }) {
       <FlatList
         data={movies}
         numColumns={3}
-        keyExtractor={(item, idx) => item.id || `exp-${idx}`}
+        keyExtractor={(item, idx) => `exp-${item?.id || 'card'}-${idx}`}
         renderItem={({ item }) => (
           <View style={styles.gridItem}>
             <MovieCard movie={item} onPress={(m) => navigation.navigate('Detail', { movie: m })} />
