@@ -160,18 +160,24 @@ export default function DetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* Stream Addons & Play Section */}
+          {/* Stream Addons & Multi-Server Sources Section */}
           <View style={styles.streamSection}>
+            <Text style={styles.creditLabel}>IZVORI I SERVERI ZA GLEDANJE</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.addonList}>
-              {['All', 'GledajCrtace', 'Elena TV', 'Torrentio'].map((addon) => {
-                const isActive = activeAddon === addon;
+              {(movie?.servers || details?.servers || [
+                { serverName: 'Server 1 (HD)', embedUrl: details?.embedUrl || movie?.url },
+                { serverName: 'Server 2 (Backup)', embedUrl: details?.embedUrl || movie?.url }
+              ]).map((server, idx) => {
+                const isActive = activeAddon === idx || (activeAddon === 'All' && idx === 0);
                 return (
                   <TouchableOpacity
-                    key={addon}
+                    key={idx}
                     style={[styles.addonPill, isActive && styles.addonPillActive]}
-                    onPress={() => setActiveAddon(addon)}
+                    onPress={() => setActiveAddon(idx)}
                   >
-                    <Text style={[styles.addonText, isActive && styles.addonTextActive]}>{addon}</Text>
+                    <Text style={[styles.addonText, isActive && styles.addonTextActive]}>
+                      {server.serverName}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -179,10 +185,21 @@ export default function DetailScreen({ route, navigation }) {
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={handlePlay}
+              onPress={() => {
+                const serverList = movie?.servers || details?.servers || [];
+                const selectedIdx = typeof activeAddon === 'number' ? activeAddon : 0;
+                const selectedServer = serverList[selectedIdx] || serverList[0];
+                const targetUrl = selectedServer?.embedUrl || details?.embedUrl || movie?.url || 'https://crtanifilmovielena.com';
+                
+                watchHistoryManager.saveProgress(movie);
+                navigation.navigate('Player', {
+                  embedUrl: targetUrl,
+                  title: movie?.title || 'Sinhronizovani Crtani Film'
+                });
+              }}
               style={styles.playBtn}
             >
-              <Text style={styles.playBtnText}>▶ GLEDAJ FILM (STREMIO ENGINE)</Text>
+              <Text style={styles.playBtnText}>▶ GLEDAJ FILM ODMAH</Text>
             </TouchableOpacity>
           </View>
         </View>
