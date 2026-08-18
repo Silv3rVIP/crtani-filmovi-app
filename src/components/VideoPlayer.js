@@ -52,8 +52,8 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
 
   const currentUrl = normalizeUrl(embedUrl);
 
-  // Advanced Autonomous Video Playback & Auto-Clicker Engine for Android TV
-  const injectedJavaScript = `
+  // Multi-frame autonomous script injected into BOTH the main frame and all player iframes
+  const autoPlayScript = `
     (function() {
       try {
         // Block window.open ad popups
@@ -87,7 +87,7 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           }
         }, true);
 
-        // Inject fullscreen player style
+        // Inject fullscreen & clean overlay CSS
         var style = document.createElement('style');
         style.id = 'clean-native-player-fullscreen';
         style.innerHTML = \`
@@ -112,7 +112,7 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
             pointer-events: none !important;
           }
 
-          /* Force Video / Iframe Player to fill viewport */
+          /* Force Video & Player containers to fill viewport */
           #player-frame, .content-player, #vplayer, #player, .player-container, .watching-player,
           video, .jwplayer, .video-js,
           iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="strp2p"] {
@@ -133,53 +133,78 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           document.head.appendChild(style);
         }
 
-        // Helper to dispatch synthetic full user click sequence (Touch, Pointer & Mouse)
-        function simulateRealClick(element) {
+        // Helper to dispatch synthetic full user click sequence
+        function fireClick(element) {
           if (!element) return;
           try {
             var rect = element.getBoundingClientRect();
             var cx = rect.left + rect.width / 2;
             var cy = rect.top + rect.height / 2;
-
             var opts = { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy };
             
-            // Pointer & Mouse sequence
             element.dispatchEvent(new MouseEvent('mousedown', opts));
             element.dispatchEvent(new MouseEvent('mouseup', opts));
             element.dispatchEvent(new MouseEvent('click', opts));
-            
-            // Native click
             if (typeof element.click === 'function') {
               element.click();
             }
           } catch(e) {}
         }
 
-        // Autonomous Playback Trigger Loop
-        function triggerAutonomousPlay() {
-          // 1. Layer 1: Lena & StariCrtaci outer play buttons & cover overlays
-          var primaryTriggers = document.querySelectorAll('#frame-cover, #player-frame > a, .film-play, .btn-play, .play-btn, .pv_play_btn, .videoplayer_play, .do-player-option, #player-option-1, [data-type="movie_iframe_link"], .options-player li');
-          primaryTriggers.forEach(function(btn) {
-            simulateRealClick(btn);
+        // Auto-Trigger Loop (Runs in Top Frame & inside player Iframes)
+        function autoPlayLoop() {
+          // 1. Click all play buttons, covers, SVGs, polygons, and icons
+          var playElements = document.querySelectorAll(
+            '#frame-cover, #player-frame > a, .film-play, .btn-play, .play-btn, .pv_play_btn, .videoplayer_play, ' +
+            '.do-player-option, #player-option-1, [data-type="movie_iframe_link"], .options-player li, ' +
+            '.vjs-big-play-button, .jw-display-icon-container, .jw-icon-display, .jw-preview, ' +
+            '[class*="play-button"], [class*="play-icon"], [class*="play"], [id*="play"], button[title*="Play"], ' +
+            'svg, path, polygon, canvas, button'
+          );
+          playElements.forEach(function(el) {
+            fireClick(el);
           });
 
-          // 2. Layer 2: Embedded player controls (JWPlayer, Video.js, HTML5 video play overlays)
-          var playerButtons = document.querySelectorAll('.vjs-big-play-button, .jw-display-icon-container, .jw-icon-display, .jw-preview, [class*="play-button"], [aria-label*="Play"], [aria-label*="Pusti"], button[title*="Play"], .play-wrapper, .play-icon, #player_play');
-          playerButtons.forEach(function(pBtn) {
-            simulateRealClick(pBtn);
+          // 2. Target HTML5 Video elements and force auto-play
+          var vids = document.querySelectorAll('video');
+          vids.forEach(function(v) {
+            try {
+              v.style.setProperty('width', '100vw', 'important');
+              v.style.setProperty('height', '100vh', 'important');
+              if (v.paused && typeof v.play === 'function') {
+                v.muted = true; // bypass gesture requirement
+                var p = v.play();
+                if (p && typeof p.then === 'function') {
+                  p.then(function() {
+                    setTimeout(function() { v.muted = false; }, 400);
+                  }).catch(function() {
+                    v.play();
+                  });
+                }
+              }
+            } catch(e){}
           });
 
-          // 3. Layer 3: Virtual Center Screen Click (Triggers centered canvas / SVG play buttons)
-          try {
-            var centerX = window.innerWidth / 2;
-            var centerY = window.innerHeight / 2;
-            var centerElem = document.elementFromPoint(centerX, centerY);
-            if (centerElem && centerElem.tagName !== 'HTML' && centerElem.tagName !== 'BODY') {
-              simulateRealClick(centerElem);
-            }
-          } catch(e) {}
+          // 3. Multi-point coordinate taps (Targets center-right & center play overlays)
+          var tapPoints = [
+            [0.50, 0.50],
+            [0.75, 0.35],
+            [0.70, 0.30],
+            [0.65, 0.40],
+            [0.50, 0.40]
+          ];
+          tapPoints.forEach(function(pt) {
+            try {
+              var x = window.innerWidth * pt[0];
+              var y = window.innerHeight * pt[1];
+              var targetElem = document.elementFromPoint(x, y);
+              if (targetElem && targetElem.tagName !== 'HTML' && targetElem.tagName !== 'BODY') {
+                fireClick(targetElem);
+              }
+            } catch(e){}
+          });
 
-          // 4. Layer 4: Deep iframe traversal for inner players
+          // 4. Expand and trigger nested iframes
           var iframes = document.querySelectorAll('iframe');
           iframes.forEach(function(f) {
             if (f.src && !f.src.includes('about:blank') && !f.src.includes('cbox') && !f.src.includes('facebook')) {
@@ -190,60 +215,35 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
               f.style.setProperty('height', '100vh', 'important');
               f.style.setProperty('z-index', '999999', 'important');
 
-              // If iframe is accessible, trigger inner play buttons
               try {
                 var doc = f.contentDocument || (f.contentWindow ? f.contentWindow.document : null);
                 if (doc) {
-                  var innerBtns = doc.querySelectorAll('.vjs-big-play-button, .jw-display-icon-container, video, [class*="play"], button');
-                  innerBtns.forEach(function(ib) {
-                    simulateRealClick(ib);
+                  var innerTargets = doc.querySelectorAll('.vjs-big-play-button, .jw-display-icon-container, video, [class*="play"], svg, polygon, button');
+                  innerTargets.forEach(function(ib) {
+                    fireClick(ib);
                   });
                   var innerVids = doc.querySelectorAll('video');
                   innerVids.forEach(function(iv) {
                     if (iv.paused && typeof iv.play === 'function') {
-                      var p = iv.play();
-                      if (p && typeof p.catch === 'function') p.catch(function(){});
+                      iv.muted = true;
+                      iv.play();
                     }
                   });
                 }
-              } catch(crossErr) {}
-            }
-          });
-
-          // 5. Layer 5: HTML5 Video Elements Auto-Play Watcher
-          var vids = document.querySelectorAll('video');
-          vids.forEach(function(v) {
-            try {
-              v.style.setProperty('width', '100vw', 'important');
-              v.style.setProperty('height', '100vh', 'important');
-              if (v.paused && typeof v.play === 'function') {
-                var p = v.play();
-                if (p && typeof p.catch === 'function') p.catch(function(){});
-              }
-            } catch(err) {}
-          });
-
-          // 6. Layer 6: Security Verification and Continue Buttons
-          var buttons = document.querySelectorAll('button, a, div, span, input[type="submit"]');
-          buttons.forEach(function(btn) {
-            var txt = (btn.innerText || btn.value || '').trim().toUpperCase();
-            if (txt === 'CONTINUE' || txt === 'PROCEED' || txt === 'VERIFY' || txt === 'GLEDAJ FILM') {
-              simulateRealClick(btn);
+              } catch(crossErr){}
             }
           });
         }
 
-        // Execute immediately and pulse regularly to catch async dynamic player injection
-        triggerAutonomousPlay();
-        var autoInterval = setInterval(triggerAutonomousPlay, 400);
+        autoPlayLoop();
+        var timer = setInterval(autoPlayLoop, 300);
 
-        // Slow down pulse after video successfully starts playing
         setTimeout(function() {
-          clearInterval(autoInterval);
-          setInterval(triggerAutonomousPlay, 1500);
-        }, 8000);
+          clearInterval(timer);
+          setInterval(autoPlayLoop, 1500);
+        }, 10000);
 
-      } catch(e) {}
+      } catch(e){}
     })();
     true;
   `;
@@ -316,6 +316,10 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           allowsFullscreenVideo={true}
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
+          injectedJavaScriptForMainFrameOnly={false}
+          injectedJavaScriptBeforeContentLoadedForMainFrameOnly={false}
+          injectedJavaScriptBeforeContentLoaded={autoPlayScript}
+          injectedJavaScript={autoPlayScript}
           userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
           onShouldStartLoadWithRequest={(request) => {
             const url = request.url.toLowerCase();
@@ -338,7 +342,6 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
             console.warn('WebView load error:', e.nativeEvent);
             setLoading(false);
           }}
-          injectedJavaScript={injectedJavaScript}
         />
 
         {loading && (
