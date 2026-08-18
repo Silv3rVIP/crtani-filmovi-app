@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import MovieCard from '../components/MovieCard';
 import { firebaseService } from '../services/firebase';
 import { isTV } from '../utils/device';
@@ -76,11 +76,15 @@ export default function ExploreScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Top Filter Bar */}
+      {/* Top Easy-Access Filter Bar */}
       <View style={styles.filterBar}>
-        <FilterPill label={getFilterLabel()} isActive={selectedFilter !== 'all'} onPress={handleFilterToggle} />
-        <FilterPill label="Popular ▾" isActive={false} onPress={() => {}} />
-        <FilterPill label="Zadano ▾" isActive={false} onPress={() => {}} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterList}>
+          <FilterPill label="Sve" isActive={selectedFilter === 'all'} onPress={() => setSelectedFilter('all')} />
+          <FilterPill label="🎬 Filmovi" isActive={selectedFilter === 'dugi_crtani'} onPress={() => setSelectedFilter('dugi_crtani')} />
+          <FilterPill label="📺 Serije" isActive={selectedFilter === 'serija'} onPress={() => setSelectedFilter('serija')} />
+          <FilterPill label="🎙️ Sinhronizovano" isActive={selectedFilter === 'sinhronizovano'} onPress={() => setSelectedFilter('sinhronizovano')} />
+          <FilterPill label="📝 Titlovano" isActive={selectedFilter === 'titlovano'} onPress={() => setSelectedFilter('titlovano')} />
+        </ScrollView>
       </View>
 
       {/* 3-Column Paginated Poster Grid */}
@@ -108,11 +112,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#090A10'
   },
   filterBar: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     backgroundColor: '#0D0E15'
+  },
+  filterList: {
+    gap: 10,
+    paddingHorizontal: 16
   },
   filterDropdown: {
     backgroundColor: '#161823',

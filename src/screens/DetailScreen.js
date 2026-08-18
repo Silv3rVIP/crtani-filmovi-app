@@ -27,7 +27,29 @@ function ServerPill({ server, isActive, onPress }) {
   );
 }
 
-function FocusablePlayBtn({ onPress }) {
+function EpisodePill({ episode, isSelected, onPress }) {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      onPress={onPress}
+      style={[
+        styles.addonPill,
+        isSelected && styles.addonPillActive,
+        isFocused && styles.addonPillFocused
+      ]}
+    >
+      <Text style={[styles.addonText, isSelected && styles.addonTextActive, isFocused && styles.addonTextFocused]}>
+        ▶ {episode.title || `Epizoda ${episode.episode}`}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function FocusablePlayBtn({ label = '▶ GLEDAJ FILM ODMAH', onPress }) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -38,7 +60,7 @@ function FocusablePlayBtn({ onPress }) {
       onPress={onPress}
       style={[styles.playBtn, isFocused && styles.playBtnFocused]}
     >
-      <Text style={[styles.playBtnText, isFocused && styles.playBtnTextFocused]}>▶ GLEDAJ FILM ODMAH</Text>
+      <Text style={[styles.playBtnText, isFocused && styles.playBtnTextFocused]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -50,6 +72,7 @@ export default function DetailScreen({ route, navigation }) {
   const [liked, setLiked] = useState(false);
   const [inLibrary, setInLibrary] = useState(false);
   const [activeAddon, setActiveAddon] = useState('All');
+  const [selectedEpisodeIdx, setSelectedEpisodeIdx] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -198,6 +221,23 @@ export default function DetailScreen({ route, navigation }) {
             </View>
           </View>
 
+          {/* TV Series Seasons & Episodes Section */}
+          {(movie?.episodes?.length > 0 || details?.episodes?.length > 0) && (
+            <View style={styles.streamSection}>
+              <Text style={styles.creditLabel}>EPIZODE I SEZONE ({movie?.episodes?.length || details?.episodes?.length} Epizoda)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.addonList}>
+                {(movie?.episodes || details?.episodes || []).map((ep, idx) => (
+                  <EpisodePill
+                    key={idx}
+                    episode={ep}
+                    isSelected={selectedEpisodeIdx === idx}
+                    onPress={() => setSelectedEpisodeIdx(idx)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           {/* Stream Addons & Multi-Server Sources Section */}
           <View style={styles.streamSection}>
             <Text style={styles.creditLabel}>IZVORI I SERVERI ZA GLEDANJE</Text>
@@ -220,16 +260,21 @@ export default function DetailScreen({ route, navigation }) {
             </ScrollView>
 
             <FocusablePlayBtn
+              label={movie?.episodes?.length > 0 ? `▶ GLEDAJ EPIZODU ${selectedEpisodeIdx + 1}` : '▶ GLEDAJ FILM ODMAH'}
               onPress={() => {
+                const epList = movie?.episodes || details?.episodes || [];
                 const serverList = movie?.servers || details?.servers || [];
                 const selectedIdx = typeof activeAddon === 'number' ? activeAddon : 0;
                 const selectedServer = serverList[selectedIdx] || serverList[0];
-                const targetUrl = selectedServer?.embedUrl || details?.embedUrl || movie?.url || 'https://crtanifilmovielena.com';
+                
+                const targetUrl = epList.length > 0 
+                  ? epList[selectedEpisodeIdx]?.embedUrl || selectedServer?.embedUrl
+                  : selectedServer?.embedUrl || details?.embedUrl || movie?.url || 'https://crtanifilmovielena.com';
                 
                 watchHistoryManager.saveProgress(movie);
                 navigation.navigate('Player', {
                   embedUrl: targetUrl,
-                  title: movie?.title || 'Sinhronizovani Crtani Film'
+                  title: epList.length > 0 ? `${movie?.title || 'Serija'} - Epizoda ${selectedEpisodeIdx + 1}` : (movie?.title || 'Sinhronizovani Crtani Film')
                 });
               }}
             />
