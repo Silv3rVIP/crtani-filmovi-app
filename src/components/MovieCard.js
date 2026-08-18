@@ -7,6 +7,9 @@ const { cardWidth, cardHeight } = getLayoutMetrics();
 export default function MovieCard({ movie, onPress, hasPreferredFocus = false }) {
   const [isFocused, setIsFocused] = useState(false);
 
+  const displayTitle = movie?.title || movie?.titleBosnian || movie?.titleEnglish || movie?.rawTitle || 'Crtani Film';
+  const displayPoster = movie?.poster || movie?.backdrop || 'https://image.tmdb.org/t/p/w342/8o6lkhL32xQJeB52IIG1us5BVey.jpg';
+
   return (
     <TouchableOpacity
       activeOpacity={0.8}
@@ -20,13 +23,13 @@ export default function MovieCard({ movie, onPress, hasPreferredFocus = false })
       ]}
     >
       <Image
-        source={{ uri: movie.poster }}
+        source={{ uri: displayPoster }}
         style={styles.poster}
         resizeMode="cover"
       />
       <View style={styles.gradientOverlay}>
         <Text style={[styles.title, isFocused && styles.titleFocused]} numberOfLines={2}>
-          {movie.title}
+          {displayTitle}
         </Text>
       </View>
 

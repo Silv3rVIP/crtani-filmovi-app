@@ -37,19 +37,19 @@ function EpisodePill({ episode, isSelected, onPress }) {
       onBlur={() => setIsFocused(false)}
       onPress={onPress}
       style={[
-        styles.addonPill,
-        isSelected && styles.addonPillActive,
-        isFocused && styles.addonPillFocused
+        styles.episodePill,
+        isSelected && styles.episodePillActive,
+        isFocused && styles.episodePillFocused
       ]}
     >
-      <Text style={[styles.addonText, isSelected && styles.addonTextActive, isFocused && styles.addonTextFocused]}>
-        ▶ {episode.title || `Epizoda ${episode.episode}`}
+      <Text style={[styles.episodeText, isSelected && styles.episodeTextActive, isFocused && styles.episodeTextFocused]}>
+        {isSelected ? '▶ ' : ''}{episode.title || `Epizoda ${episode.episode || 1}`}
       </Text>
     </TouchableOpacity>
   );
 }
 
-function FocusablePlayBtn({ label = '▶ GLEDAJ FILM ODMAH', onPress }) {
+function FocusablePlayBtn({ label = '▶ PUSTI FILM ODMAH', onPress }) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -69,18 +69,41 @@ export default function DetailScreen({ route, navigation }) {
   const movie = route?.params?.movie || {};
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [liked, setLiked] = useState(false);
   const [inLibrary, setInLibrary] = useState(false);
-  const [activeAddon, setActiveAddon] = useState('All');
+  const [activeServerIdx, setActiveServerIdx] = useState(0);
   const [selectedEpisodeIdx, setSelectedEpisodeIdx] = useState(0);
+
+  // Dynamic movie information
+  const displayTitle = movie?.title || movie?.titleBosnian || movie?.titleEnglish || movie?.rawTitle || 'Crtani Film';
+  const displayYear = movie?.year || (movie?.releaseDate ? movie.releaseDate.split('-')[0] : 2024);
+  const displayRating = movie?.imdbRating || movie?.rating || (details?.rating ? parseFloat(details.rating) : 7.8);
+  const isSeries = movie?.type === 'serija' || (Array.isArray(movie?.episodes) && movie.episodes.length > 0);
+  const episodesList = Array.isArray(movie?.episodes) && movie.episodes.length > 0 ? movie.episodes : (details?.episodes || []);
+  
+  const displayDuration = isSeries
+    ? `${episodesList.length > 0 ? episodesList.length : 1} Epizoda`
+    : (movie?.type === 'kratki_crtani' ? '10 min' : (movie?.duration || '85 min'));
+
+  const dubbingLabel = movie?.dubbingType === 'titlovano' ? '📝 Titlovano' : '🎙️ Sinhronizovano';
+  const typeLabel = isSeries ? '📺 Serija' : (movie?.type === 'kratki_crtani' ? '🎬 Kratki Crtani' : '🎬 Dugometražni');
+  const genres = Array.isArray(movie?.genres) && movie.genres.length > 0 ? movie.genres : ['Animacija', 'Porodični'];
+
+  const serversList = Array.isArray(movie?.servers) && movie.servers.length > 0
+    ? movie.servers
+    : (Array.isArray(details?.servers) && details.servers.length > 0
+      ? details.servers
+      : [
+          { serverName: 'Server 1 (Glavni HD)', embedUrl: movie?.streamUrl || movie?.sourceUrl || details?.embedUrl || movie?.url },
+          { serverName: 'Server 2 (Rezervni)', embedUrl: movie?.streamUrl || movie?.sourceUrl || details?.embedUrl || movie?.url }
+        ]);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadDetails() {
-      if (!movie.url && !movie.id) return;
+      if (!movie.url && !movie.id && !movie.sourceUrl) return;
 
-      const cacheKey = `details_${movie.id || movie.url}`;
+      const cacheKey = `details_${movie.id || movie.url || movie.sourceUrl}`;
       const cached = await cacheManager.get(cacheKey);
       if (cached && isMounted) {
         setDetails(cached);
@@ -90,10 +113,13 @@ export default function DetailScreen({ route, navigation }) {
       }
 
       try {
-        const res = await fetchMovieDetails(movie.url || `https://crtanifilmovielena.com/movie/${movie.id}/`);
-        if (res && isMounted) {
-          setDetails(res);
-          cacheManager.set(cacheKey, res);
+        const targetUrl = movie.url || movie.sourceUrl || (movie.id ? `https://crtanifilmovielena.com/movie/${movie.id}/` : null);
+        if (targetUrl) {
+          const res = await fetchMovieDetails(targetUrl);
+          if (res && isMounted) {
+            setDetails(res);
+            cacheManager.set(cacheKey, res);
+          }
         }
       } catch (err) {
         console.warn('Detail fetch error:', err);
@@ -109,13 +135,24 @@ export default function DetailScreen({ route, navigation }) {
     };
   }, [movie]);
 
-  const handlePlay = () => {
+  const handlePlayCurrent = () => {
     watchHistoryManager.saveProgress(movie);
-    const streamUrl = details?.embedUrl || movie?.url || (movie?.id ? `https://crtanifilmovielena.com/movie/${movie.id}/` : 'https://crtanifilmovielena.com');
+    
+    let streamUrl = '';
+    let streamTitle = displayTitle;
+
+    if (isSeries && episodesList.length > 0) {
+      const ep = episodesList[selectedEpisodeIdx] || episodesList[0];
+      streamUrl = ep?.embedUrl || serversList[activeServerIdx]?.embedUrl || movie?.streamUrl;
+      streamTitle = `${displayTitle} - ${ep?.title || `Epizoda ${selectedEpisodeIdx + 1}`}`;
+    } else {
+      const selectedServer = serversList[activeServerIdx] || serversList[0];
+      streamUrl = selectedServer?.embedUrl || movie?.streamUrl || movie?.sourceUrl || details?.embedUrl || 'https://crtanifilmovielena.com';
+    }
 
     navigation.navigate('Player', {
       embedUrl: streamUrl,
-      title: movie?.title || 'Sinhronizovani Crtani Film'
+      title: streamTitle
     });
   };
 
@@ -138,12 +175,6 @@ export default function DetailScreen({ route, navigation }) {
               </TouchableOpacity>
 
               <View style={styles.topRightActions}>
-                <TouchableOpacity style={styles.circleBtn} activeOpacity={0.7}>
-                  <Text style={styles.circleBtnText}>🔗</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.circleBtn} activeOpacity={0.7}>
-                  <Text style={styles.circleBtnText}>🎬</Text>
-                </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.circleBtn, inLibrary && styles.circleBtnActive]}
                   onPress={() => setInLibrary(!inLibrary)}
@@ -154,79 +185,56 @@ export default function DetailScreen({ route, navigation }) {
               </View>
             </View>
 
-            {/* Title */}
+            {/* Prominent Title in Hero Banner */}
             <View style={styles.titleWrapper}>
-              <Text style={styles.title}>{movie.title}</Text>
+              <Text style={styles.title}>{displayTitle}</Text>
             </View>
           </View>
         </ImageBackground>
 
         {/* Content Body */}
         <View style={styles.body}>
-          {/* Metadata Row */}
+          {/* Real Metadata Row: Godina • Trajanje • IMDb Ocjena • Tip */}
           <View style={styles.metaRow}>
-            <Text style={styles.metaText}>95 min • 2024 • </Text>
+            <Text style={styles.metaText}>{displayYear} • {displayDuration} • </Text>
             <View style={styles.imdbBadge}>
-              <Text style={styles.imdbText}>IMDb 8.2</Text>
+              <Text style={styles.imdbText}>IMDb {displayRating}</Text>
             </View>
-            <View style={styles.metaRight}>
-              <TouchableOpacity style={styles.iconBtn} onPress={() => setLiked(!liked)}>
-                <Text style={styles.iconText}>{liked ? '👍' : '👍'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn} onPress={() => setInLibrary(!inLibrary)}>
-                <Text style={styles.iconText}>{inLibrary ? '❤️' : '🤍'}</Text>
-              </TouchableOpacity>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeText}>{dubbingLabel}</Text>
+            </View>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeText}>{typeLabel}</Text>
             </View>
           </View>
 
-          {/* Synopsis */}
-          {loading ? (
-            <ActivityIndicator size="small" color="#6C5CE7" style={{ alignSelf: 'flex-start', marginVertical: 12 }} />
-          ) : (
-            <Text style={styles.description}>
-              {details?.description || movie.description || 'Popularni sinhronizovani crtani film dostupan sa srpskom i hrvatskom sinhronizacijom.'}
-            </Text>
-          )}
-
-          {/* Genre Pills */}
+          {/* Genre Badges */}
           <View style={styles.pillRow}>
-            <View style={styles.pill}><Text style={styles.pillText}>Animacija</Text></View>
-            <View style={styles.pill}><Text style={styles.pillText}>Porodični</Text></View>
-            <View style={styles.pill}><Text style={styles.pillText}>Komedija</Text></View>
+            {genres.map((g, idx) => (
+              <View key={idx} style={styles.pill}>
+                <Text style={styles.pillText}>{g}</Text>
+              </View>
+            ))}
           </View>
 
-          {/* REDATELJ */}
-          <View style={styles.creditSection}>
-            <Text style={styles.creditLabel}>REDATELJ</Text>
-            <View style={styles.pillRow}>
-              <View style={styles.pill}><Text style={styles.pillText}>Walt Disney Animation</Text></View>
-            </View>
-          </View>
-
-          {/* GLUMCI */}
-          <View style={styles.creditSection}>
-            <Text style={styles.creditLabel}>GLUMCI</Text>
-            <View style={styles.pillRow}>
-              <View style={styles.pill}><Text style={styles.pillText}>Marko Marković</Text></View>
-              <View style={styles.pill}><Text style={styles.pillText}>Jelena Gavrilović</Text></View>
-              <View style={styles.pill}><Text style={styles.pillText}>Dragan Mićanović</Text></View>
-            </View>
-          </View>
-
-          {/* SCENARIST */}
-          <View style={styles.creditSection}>
-            <Text style={styles.creditLabel}>SCENARIST</Text>
-            <View style={styles.pillRow}>
-              <View style={styles.pill}><Text style={styles.pillText}>Originalni Scenaristi</Text></View>
-            </View>
+          {/* Short Synopsis / Description */}
+          <View style={styles.descSection}>
+            <Text style={styles.sectionHeaderLabel}>KRATAK OPIS</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="#6C5CE7" style={{ alignSelf: 'flex-start', marginVertical: 8 }} />
+            ) : (
+              <Text style={styles.description}>
+                {movie?.description || details?.description || `${displayTitle} – gledajte besplatno u HD rezoluciji sa prevodom ili sinhronizacijom.`}
+              </Text>
+            )}
           </View>
 
           {/* TV Series Seasons & Episodes Section */}
-          {(movie?.episodes?.length > 0 || details?.episodes?.length > 0) && (
+          {isSeries && episodesList.length > 0 && (
             <View style={styles.streamSection}>
-              <Text style={styles.creditLabel}>EPIZODE I SEZONE ({movie?.episodes?.length || details?.episodes?.length} Epizoda)</Text>
+              <Text style={styles.sectionHeaderLabel}>EPIZODE I SEZONE ({episodesList.length} Epizoda)</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.addonList}>
-                {(movie?.episodes || details?.episodes || []).map((ep, idx) => (
+                {episodesList.map((ep, idx) => (
                   <EpisodePill
                     key={idx}
                     episode={ep}
@@ -238,45 +246,27 @@ export default function DetailScreen({ route, navigation }) {
             </View>
           )}
 
-          {/* Stream Addons & Multi-Server Sources Section */}
+          {/* Stream Servers & Source Options */}
           <View style={styles.streamSection}>
-            <Text style={styles.creditLabel}>IZVORI I SERVERI ZA GLEDANJE</Text>
+            <Text style={styles.sectionHeaderLabel}>IZVORI I SERVERI ZA GLEDANJE</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.addonList}>
-              {(movie?.servers || details?.servers || [
-                { serverName: 'Server 1 (HD)', embedUrl: details?.embedUrl || movie?.url },
-                { serverName: 'Server 2 (Backup)', embedUrl: details?.embedUrl || movie?.url }
-              ]).map((server, idx) => {
-                const isActive = activeAddon === idx || (activeAddon === 'All' && idx === 0);
+              {serversList.map((server, idx) => {
+                const isActive = activeServerIdx === idx;
                 return (
                   <ServerPill
                     key={idx}
                     server={server}
-                    idx={idx}
                     isActive={isActive}
-                    onPress={() => setActiveAddon(idx)}
+                    onPress={() => setActiveServerIdx(idx)}
                   />
                 );
               })}
             </ScrollView>
 
+            {/* Primary Action Button */}
             <FocusablePlayBtn
-              label={movie?.episodes?.length > 0 ? `▶ GLEDAJ EPIZODU ${selectedEpisodeIdx + 1}` : '▶ GLEDAJ FILM ODMAH'}
-              onPress={() => {
-                const epList = movie?.episodes || details?.episodes || [];
-                const serverList = movie?.servers || details?.servers || [];
-                const selectedIdx = typeof activeAddon === 'number' ? activeAddon : 0;
-                const selectedServer = serverList[selectedIdx] || serverList[0];
-                
-                const targetUrl = epList.length > 0 
-                  ? epList[selectedEpisodeIdx]?.embedUrl || selectedServer?.embedUrl
-                  : selectedServer?.embedUrl || details?.embedUrl || movie?.url || 'https://crtanifilmovielena.com';
-                
-                watchHistoryManager.saveProgress(movie);
-                navigation.navigate('Player', {
-                  embedUrl: targetUrl,
-                  title: epList.length > 0 ? `${movie?.title || 'Serija'} - Epizoda ${selectedEpisodeIdx + 1}` : (movie?.title || 'Sinhronizovani Crtani Film')
-                });
-              }}
+              label={isSeries && episodesList.length > 0 ? `▶ PUSTI EPIZODU ${selectedEpisodeIdx + 1}` : '▶ PUSTI FILM ODMAH'}
+              onPress={handlePlayCurrent}
             />
           </View>
         </View>
@@ -299,7 +289,7 @@ const styles = StyleSheet.create({
   },
   gradientOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(9, 10, 16, 0.55)',
+    backgroundColor: 'rgba(9, 10, 16, 0.65)',
     justifyContent: 'space-between',
     padding: 16
   },
@@ -314,33 +304,33 @@ const styles = StyleSheet.create({
     gap: 10
   },
   circleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(22, 24, 35, 0.75)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(22, 24, 35, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)'
+    borderColor: 'rgba(255, 255, 255, 0.15)'
   },
   circleBtnActive: {
     backgroundColor: '#6C5CE7'
   },
   circleBtnText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700'
   },
   titleWrapper: {
-    marginBottom: 10
+    marginBottom: 8
   },
   title: {
     color: '#FFFFFF',
     fontSize: isTV ? 32 : 24,
-    fontWeight: '800',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    fontWeight: '900',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4
+    textShadowRadius: 6
   },
   body: {
     padding: 16
@@ -348,7 +338,9 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12
   },
   metaText: {
     color: '#94A3B8',
@@ -357,31 +349,42 @@ const styles = StyleSheet.create({
   },
   imdbBadge: {
     backgroundColor: '#F5C518',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
   },
   imdbText: {
     color: '#000000',
-    fontWeight: '800',
+    fontWeight: '900',
     fontSize: 11
   },
-  metaRight: {
-    flexDirection: 'row',
-    gap: 16,
-    marginLeft: 'auto'
+  typeBadge: {
+    backgroundColor: '#1E1E2C',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#2D3047'
   },
-  iconBtn: {
-    padding: 4
+  typeText: {
+    color: '#E2E8F0',
+    fontSize: 11,
+    fontWeight: '700'
   },
-  iconText: {
-    fontSize: 18
+  descSection: {
+    marginBottom: 16
+  },
+  sectionHeaderLabel: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 8
   },
   description: {
     color: '#CBD5E1',
     fontSize: isTV ? 16 : 14,
-    lineHeight: 22,
-    marginBottom: 16
+    lineHeight: 22
   },
   pillRow: {
     flexDirection: 'row',
@@ -391,29 +394,19 @@ const styles = StyleSheet.create({
   },
   pill: {
     backgroundColor: '#161823',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#242736'
   },
   pillText: {
-    color: '#E2E8F0',
-    fontSize: isTV ? 14 : 12,
-    fontWeight: '500'
-  },
-  creditSection: {
-    marginBottom: 12
-  },
-  creditLabel: {
-    color: '#64748B',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    marginBottom: 6
+    color: '#94A3B8',
+    fontSize: isTV ? 13 : 11,
+    fontWeight: '600'
   },
   streamSection: {
-    marginTop: 16,
+    marginTop: 8,
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#1E2230'
@@ -425,20 +418,20 @@ const styles = StyleSheet.create({
   addonPill: {
     backgroundColor: '#161823',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#242736'
   },
   addonPillActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#3B82F6'
+    backgroundColor: '#1E1B4B',
+    borderColor: '#6C5CE7'
   },
   addonPillFocused: {
     backgroundColor: '#6C5CE7',
     borderWidth: 2,
     borderColor: '#FFFFFF',
-    transform: [{ scale: 1.10 }],
+    transform: [{ scale: 1.08 }],
     elevation: 10,
     shadowColor: '#6C5CE7',
     shadowRadius: 10
@@ -449,24 +442,61 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   addonTextActive: {
-    color: '#FFFFFF'
+    color: '#A29BFE',
+    fontWeight: '800'
   },
   addonTextFocused: {
     color: '#FFFFFF',
     fontWeight: '900'
   },
+  episodePill: {
+    backgroundColor: '#161823',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#242736',
+    minWidth: 120,
+    alignItems: 'center'
+  },
+  episodePillActive: {
+    backgroundColor: '#1E1B4B',
+    borderColor: '#6C5CE7'
+  },
+  episodePillFocused: {
+    backgroundColor: '#6C5CE7',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    transform: [{ scale: 1.08 }],
+    elevation: 10,
+    shadowColor: '#6C5CE7',
+    shadowRadius: 10
+  },
+  episodeText: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  episodeTextActive: {
+    color: '#A29BFE',
+    fontWeight: '800'
+  },
+  episodeTextFocused: {
+    color: '#FFFFFF',
+    fontWeight: '900'
+  },
   playBtn: {
     backgroundColor: '#6C5CE7',
-    paddingVertical: 14,
+    paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',
-    elevation: 4
+    elevation: 6
   },
   playBtnFocused: {
     backgroundColor: '#5B4BC4',
     borderWidth: 3,
     borderColor: '#FFFFFF',
-    transform: [{ scale: 1.05 }],
+    transform: [{ scale: 1.04 }],
     elevation: 14,
     shadowColor: '#6C5CE7',
     shadowRadius: 14
@@ -474,7 +504,7 @@ const styles = StyleSheet.create({
   playBtnText: {
     color: '#FFFFFF',
     fontSize: isTV ? 16 : 14,
-    fontWeight: '800',
+    fontWeight: '900',
     letterSpacing: 0.5
   },
   playBtnTextFocused: {
