@@ -200,11 +200,16 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
 
           var vids = document.querySelectorAll('video');
           vids.forEach(function(v) {
-            v.style.setProperty('width', '100%', 'important');
-            v.style.setProperty('height', '100%', 'important');
-            if (v.paused) {
-              v.play().catch(function(){});
-            }
+            try {
+              v.style.setProperty('width', '100%', 'important');
+              v.style.setProperty('height', '100%', 'important');
+              if (v.paused && typeof v.play === 'function') {
+                var p = v.play();
+                if (p && typeof p.catch === 'function') {
+                  p.catch(function(){});
+                }
+              }
+            } catch(err){}
           });
         }
 
