@@ -1,4 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorageRaw from '@react-native-async-storage/async-storage';
+
+const AsyncStorage = AsyncStorageRaw?.default || AsyncStorageRaw;
 
 const HISTORY_KEY = '@crtani_watch_history';
 let MEMORY_HISTORY = [];

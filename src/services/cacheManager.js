@@ -1,4 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorageRaw from '@react-native-async-storage/async-storage';
+
+const AsyncStorage = AsyncStorageRaw?.default || AsyncStorageRaw;
 
 const MEMORY_CACHE = new Map();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours TTL

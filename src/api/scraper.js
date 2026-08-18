@@ -67,10 +67,11 @@ export async function fetchMovieDetailsRaw(movieUrl) {
     // Handle gledajcrtace.net detail pages directly
     if (movieUrl.includes('gledajcrtace.net')) {
       let embedUrl = movieUrl;
-      const iframeMatches = Array.from(html.matchAll(/<iframe[^>]+src=["']([^"']+)["'][^>]*>/gi));
       const validIframes = [];
+      const iframeRegex = /<iframe[^>]+src=["']([^"']+)["'][^>]*>/gi;
+      let m;
 
-      for (const m of iframeMatches) {
+      while ((m = iframeRegex.exec(html)) !== null) {
         let src = m[1];
         if (
           !src.includes('facebook') &&
@@ -467,9 +468,19 @@ async function fetchHomePageDataRaw() {
       );
     }
 
+    const normalizedFeatured = featured.map(m => ({
+      ...m,
+      tags: m.tags && m.tags.length ? m.tags : ['all', 'popular', ...assignCategoryTags(m.title, m.id)]
+    }));
+
+    const normalizedMovies = movies.map(m => ({
+      ...m,
+      tags: m.tags && m.tags.length ? m.tags : ['all', 'popular', ...assignCategoryTags(m.title, m.id)]
+    }));
+
     return {
-      featured,
-      movies,
+      featured: normalizedFeatured,
+      movies: normalizedMovies,
       categories: [
         { id: 'popular', name: 'Popularno' },
         { id: 'disney', name: 'Disney & Pixar' },
