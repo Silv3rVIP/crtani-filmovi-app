@@ -10,10 +10,14 @@ export default function PlayerScreen({ route, navigation }) {
       title={title}
       navigation={navigation}
       onClose={() => {
-        if (navigation?.canGoBack()) {
-          navigation.goBack();
-        } else {
-          navigation?.navigate('Home');
+        try {
+          if (navigation && typeof navigation.canGoBack === 'function' && navigation.canGoBack()) {
+            navigation.goBack();
+          } else if (navigation && typeof navigation.navigate === 'function') {
+            navigation.navigate('Home');
+          }
+        } catch (e) {
+          try { navigation?.goBack(); } catch(err){}
         }
       }}
     />
