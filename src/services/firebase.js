@@ -7,7 +7,7 @@ import {
   where,
   limit,
   orderBy
-} from 'firebase/firestore/lite';
+} from '@firebase/firestore';
 import cartoonsDbFallback from '../data/cartoons_db.json';
 
 export const firebaseConfig = {
