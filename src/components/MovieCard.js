@@ -48,12 +48,13 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1 }]
   },
   cardFocused: {
-    transform: [{ scale: isTV ? 1.08 : 1.02 }],
-    elevation: 10,
-    shadowColor: '#00E5FF',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10
+    transform: [{ scale: 1.10 }],
+    elevation: 16,
+    shadowColor: '#6C5CE7',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
+    zIndex: 999
   },
   poster: {
     width: '100%',
@@ -73,13 +74,14 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   titleFocused: {
-    color: '#00E5FF',
-    fontWeight: '700'
+    color: '#FFFFFF',
+    fontWeight: '800'
   },
   focusBorder: {
     ...StyleSheet.absoluteFillObject,
-    borderWidth: isTV ? 4 : 2,
-    borderColor: '#00E5FF',
-    borderRadius: 12
+    borderWidth: 4,
+    borderColor: '#6C5CE7',
+    borderRadius: 12,
+    backgroundColor: 'rgba(108, 92, 231, 0.2)'
   }
 });

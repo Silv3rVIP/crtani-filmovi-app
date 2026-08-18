@@ -4,6 +4,28 @@ import MovieCard from '../components/MovieCard';
 import { firebaseService } from '../services/firebase';
 import { isTV } from '../utils/device';
 
+function FilterPill({ label, isActive, onPress }) {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      onPress={onPress}
+      style={[
+        styles.filterDropdown,
+        isActive && styles.filterDropdownActive,
+        isFocused && styles.filterDropdownFocused
+      ]}
+    >
+      <Text style={[styles.filterText, isFocused && styles.filterTextFocused]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function ExploreScreen({ navigation }) {
   const [movies, setMovies] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('all');
@@ -56,17 +78,9 @@ export default function ExploreScreen({ navigation }) {
     <View style={styles.container}>
       {/* Top Filter Bar */}
       <View style={styles.filterBar}>
-        <TouchableOpacity style={[styles.filterDropdown, selectedFilter !== 'all' && styles.filterDropdownActive]} onPress={handleFilterToggle}>
-          <Text style={styles.filterText}>{getFilterLabel()}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.filterDropdown}>
-          <Text style={styles.filterText}>Popular ▾</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.filterDropdown}>
-          <Text style={styles.filterText}>Zadano ▾</Text>
-        </TouchableOpacity>
+        <FilterPill label={getFilterLabel()} isActive={selectedFilter !== 'all'} onPress={handleFilterToggle} />
+        <FilterPill label="Popular ▾" isActive={false} onPress={() => {}} />
+        <FilterPill label="Zadano ▾" isActive={false} onPress={() => {}} />
       </View>
 
       {/* 3-Column Paginated Poster Grid */}
@@ -112,10 +126,23 @@ const styles = StyleSheet.create({
     borderColor: '#6C5CE7',
     backgroundColor: '#1E1B4B'
   },
+  filterDropdownFocused: {
+    backgroundColor: '#6C5CE7',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    transform: [{ scale: 1.08 }],
+    elevation: 8,
+    shadowColor: '#6C5CE7',
+    shadowRadius: 8
+  },
   filterText: {
     color: '#E2E8F0',
     fontSize: isTV ? 15 : 13,
     fontWeight: '600'
+  },
+  filterTextFocused: {
+    color: '#FFFFFF',
+    fontWeight: '900'
   },
   gridContent: {
     paddingHorizontal: 8,

@@ -5,6 +5,44 @@ import { isTV } from '../utils/device';
 import { watchHistoryManager } from '../services/watchHistoryManager';
 import { cacheManager } from '../services/cacheManager';
 
+function ServerPill({ server, isActive, onPress }) {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      onPress={onPress}
+      style={[
+        styles.addonPill,
+        isActive && styles.addonPillActive,
+        isFocused && styles.addonPillFocused
+      ]}
+    >
+      <Text style={[styles.addonText, isActive && styles.addonTextActive, isFocused && styles.addonTextFocused]}>
+        {server.serverName}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function FocusablePlayBtn({ onPress }) {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      onPress={onPress}
+      style={[styles.playBtn, isFocused && styles.playBtnFocused]}
+    >
+      <Text style={[styles.playBtnText, isFocused && styles.playBtnTextFocused]}>▶ GLEDAJ FILM ODMAH</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function DetailScreen({ route, navigation }) {
   const movie = route?.params?.movie || {};
   const [details, setDetails] = useState(null);
@@ -170,21 +208,18 @@ export default function DetailScreen({ route, navigation }) {
               ]).map((server, idx) => {
                 const isActive = activeAddon === idx || (activeAddon === 'All' && idx === 0);
                 return (
-                  <TouchableOpacity
+                  <ServerPill
                     key={idx}
-                    style={[styles.addonPill, isActive && styles.addonPillActive]}
+                    server={server}
+                    idx={idx}
+                    isActive={isActive}
                     onPress={() => setActiveAddon(idx)}
-                  >
-                    <Text style={[styles.addonText, isActive && styles.addonTextActive]}>
-                      {server.serverName}
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 );
               })}
             </ScrollView>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
+            <FocusablePlayBtn
               onPress={() => {
                 const serverList = movie?.servers || details?.servers || [];
                 const selectedIdx = typeof activeAddon === 'number' ? activeAddon : 0;
@@ -197,10 +232,7 @@ export default function DetailScreen({ route, navigation }) {
                   title: movie?.title || 'Sinhronizovani Crtani Film'
                 });
               }}
-              style={styles.playBtn}
-            >
-              <Text style={styles.playBtnText}>▶ GLEDAJ FILM ODMAH</Text>
-            </TouchableOpacity>
+            />
           </View>
         </View>
       </ScrollView>
@@ -357,6 +389,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563EB',
     borderColor: '#3B82F6'
   },
+  addonPillFocused: {
+    backgroundColor: '#6C5CE7',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    transform: [{ scale: 1.10 }],
+    elevation: 10,
+    shadowColor: '#6C5CE7',
+    shadowRadius: 10
+  },
   addonText: {
     color: '#94A3B8',
     fontSize: 13,
@@ -365,17 +406,34 @@ const styles = StyleSheet.create({
   addonTextActive: {
     color: '#FFFFFF'
   },
+  addonTextFocused: {
+    color: '#FFFFFF',
+    fontWeight: '900'
+  },
   playBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#6C5CE7',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     elevation: 4
+  },
+  playBtnFocused: {
+    backgroundColor: '#5B4BC4',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    transform: [{ scale: 1.05 }],
+    elevation: 14,
+    shadowColor: '#6C5CE7',
+    shadowRadius: 14
   },
   playBtnText: {
     color: '#FFFFFF',
     fontSize: isTV ? 16 : 14,
     fontWeight: '800',
     letterSpacing: 0.5
+  },
+  playBtnTextFocused: {
+    color: '#FFFFFF',
+    fontWeight: '900'
   }
 });

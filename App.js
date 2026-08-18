@@ -9,6 +9,33 @@ import SearchScreen from './src/screens/SearchScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
 import { isTV } from './src/utils/device';
 
+function NavTab({ icon, label, isActive, onPress }) {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      onPress={onPress}
+      style={[
+        styles.bottomTab,
+        isActive && styles.bottomTabActive,
+        isFocused && styles.bottomTabFocused
+      ]}
+    >
+      <Text style={styles.tabIcon}>{icon}</Text>
+      <Text style={[
+        styles.tabLabel,
+        isActive && styles.tabLabelActive,
+        isFocused && styles.tabLabelFocused
+      ]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [screenParams, setScreenParams] = useState({});
@@ -83,45 +110,11 @@ export default function App() {
         {/* Stremio Bottom Navigation Bar */}
         {currentScreen !== 'Player' && (
           <View style={styles.bottomNav}>
-            <TouchableOpacity
-              style={[styles.bottomTab, currentScreen === 'Home' && styles.bottomTabActive]}
-              onPress={() => navigate('Home')}
-            >
-              <Text style={styles.tabIcon}>🏠</Text>
-              <Text style={[styles.tabLabel, currentScreen === 'Home' && styles.tabLabelActive]}>Početna</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.bottomTab, currentScreen === 'Explore' && styles.bottomTabActive]}
-              onPress={() => navigate('Explore')}
-            >
-              <Text style={styles.tabIcon}>🧭</Text>
-              <Text style={[styles.tabLabel, currentScreen === 'Explore' && styles.tabLabelActive]}>Otkrij</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.bottomTab, currentScreen === 'Library' && styles.bottomTabActive]}
-              onPress={() => navigate('Library')}
-            >
-              <Text style={styles.tabIcon}>📚</Text>
-              <Text style={[styles.tabLabel, currentScreen === 'Library' && styles.tabLabelActive]}>Knjižnica</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.bottomTab}
-              onPress={() => navigate('Explore')}
-            >
-              <Text style={styles.tabIcon}>🧩</Text>
-              <Text style={styles.tabLabel}>Dodaci</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.bottomTab}
-              onPress={() => navigate('Home')}
-            >
-              <Text style={styles.tabIcon}>⚙️</Text>
-              <Text style={styles.tabLabel}>Postavke</Text>
-            </TouchableOpacity>
+            <NavTab icon="🏠" label="Početna" isActive={currentScreen === 'Home'} onPress={() => navigate('Home')} />
+            <NavTab icon="🧭" label="Otkrij" isActive={currentScreen === 'Explore'} onPress={() => navigate('Explore')} />
+            <NavTab icon="📚" label="Knjižnica" isActive={currentScreen === 'Library'} onPress={() => navigate('Library')} />
+            <NavTab icon="🧩" label="Dodaci" isActive={false} onPress={() => navigate('Explore')} />
+            <NavTab icon="⚙️" label="Postavke" isActive={false} onPress={() => navigate('Home')} />
           </View>
         )}
       </SafeAreaView>
@@ -204,6 +197,17 @@ const styles = StyleSheet.create({
   bottomTabActive: {
     opacity: 1
   },
+  bottomTabFocused: {
+    backgroundColor: '#6C5CE7',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    transform: [{ scale: 1.12 }],
+    shadowColor: '#6C5CE7',
+    shadowRadius: 8,
+    elevation: 8
+  },
   tabIcon: {
     fontSize: 18,
     marginBottom: 2
@@ -216,5 +220,9 @@ const styles = StyleSheet.create({
   tabLabelActive: {
     color: '#6C5CE7',
     fontWeight: '800'
+  },
+  tabLabelFocused: {
+    color: '#FFFFFF',
+    fontWeight: '900'
   }
 });
