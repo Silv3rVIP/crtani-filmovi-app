@@ -52,195 +52,133 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
 
   const currentUrl = normalizeUrl(embedUrl);
 
-  // Multi-frame autonomous script injected into BOTH the main frame and all player iframes
-  const autoPlayScript = `
+  // Safe Multi-Frame Injected Auto-Play Script
+  const safeAutoPlayScript = `
     (function() {
       try {
-        // Block window.open ad popups
-        window.open = function() {
-          return { focus: function(){}, close: function(){} };
-        };
-        
-        // Neutralize click-jacking redirects
-        document.addEventListener('click', function(e) {
-          var target = e.target;
-          var link = target ? target.closest('a') : null;
-          if (link) {
-            var href = (link.href || '').toLowerCase();
-            if (
-              href.includes('aliexpress') ||
-              href.includes('adsterra') ||
-              href.includes('popunder') ||
-              href.includes('popads') ||
-              href.includes('doubleclick') ||
-              href.includes('s.click') ||
-              href.includes('exoclick') ||
-              href.includes('push-sdk')
-            ) {
-              e.preventDefault();
-              e.stopPropagation();
-              return false;
-            }
-            if (link.target === '_blank') {
-              link.removeAttribute('target');
-            }
-          }
-        }, true);
+        // Block window.open popups safely
+        try {
+          window.open = function() { return { focus: function(){}, close: function(){} }; };
+        } catch(e){}
 
-        // Inject fullscreen & clean overlay CSS
-        var style = document.createElement('style');
-        style.id = 'clean-native-player-fullscreen';
-        style.innerHTML = \`
-          html, body {
-            background-color: #000000 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: hidden !important;
-            width: 100vw !important;
-            height: 100vh !important;
-          }
-          
-          /* Hide unwanted site overlays, comments, chats and ad banners */
-          .adsbygoogle, .ad-banner, .popunder, .popup,
-          #cbox, .cbox, #cboxdiv, [id*="cbox"], [class*="cbox"], iframe[src*="cbox"], iframe[src*="chat"],
-          #comments, .comments, .comments-tab, #com-list, #mComms, #com-add-form,
-          iframe[src*="newsletter"], iframe[src*="facebook"], iframe[src*="comments"] {
-            display: none !important;
-            visibility: hidden !important;
-            height: 0 !important;
-            width: 0 !important;
-            pointer-events: none !important;
-          }
-
-          /* Force Video & Player containers to fill viewport */
-          #player-frame, .content-player, #vplayer, #player, .player-container, .watching-player,
-          video, .jwplayer, .video-js,
-          iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="strp2p"] {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            z-index: 999999 !important;
-            background: #000000 !important;
-            border: none !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-          }
-        \`;
-        if (!document.getElementById('clean-native-player-fullscreen')) {
-          document.head.appendChild(style);
-        }
-
-        // Helper to dispatch synthetic full user click sequence
-        function fireClick(element) {
-          if (!element) return;
+        // Inject Fullscreen Style safely after document is ready
+        function injectPlayerStyle() {
           try {
-            var rect = element.getBoundingClientRect();
-            var cx = rect.left + rect.width / 2;
-            var cy = rect.top + rect.height / 2;
-            var opts = { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy };
+            if (!document || (!document.head && !document.body)) return;
+            if (document.getElementById('clean-fullscreen-style')) return;
             
-            element.dispatchEvent(new MouseEvent('mousedown', opts));
-            element.dispatchEvent(new MouseEvent('mouseup', opts));
-            element.dispatchEvent(new MouseEvent('click', opts));
-            if (typeof element.click === 'function') {
-              element.click();
+            var style = document.createElement('style');
+            style.id = 'clean-fullscreen-style';
+            style.innerHTML = \`
+              html, body {
+                background-color: #000000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+                width: 100vw !important;
+                height: 100vh !important;
+              }
+              .adsbygoogle, .ad-banner, .popunder, .popup,
+              #cbox, .cbox, #cboxdiv, [id*="cbox"], [class*="cbox"],
+              #comments, .comments, .comments-tab, #com-list, #mComms,
+              iframe[src*="newsletter"], iframe[src*="facebook"], iframe[src*="comments"], iframe[src*="cbox"] {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                width: 0 !important;
+                pointer-events: none !important;
+              }
+              #player-frame, .content-player, #vplayer, #player, .player-container, .watching-player,
+              video, .jwplayer, .video-js,
+              iframe[src*="byse"], iframe[src*="vidara"], iframe[src*="vk"], iframe[src*="ok"], iframe[src*="send"], iframe[src*="waaw"], iframe[src*="player"], iframe[src*="strp2p"] {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                z-index: 999999 !important;
+                background: #000000 !important;
+                border: none !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+              }
+            \`;
+            if (document.head) {
+              document.head.appendChild(style);
+            } else if (document.body) {
+              document.body.appendChild(style);
             }
-          } catch(e) {}
+          } catch(e){}
         }
 
-        // Auto-Trigger Loop (Runs in Top Frame & inside player Iframes)
-        function autoPlayLoop() {
-          // 1. Click all play buttons, covers, SVGs, polygons, and icons
-          var playElements = document.querySelectorAll(
-            '#frame-cover, #player-frame > a, .film-play, .btn-play, .play-btn, .pv_play_btn, .videoplayer_play, ' +
-            '.do-player-option, #player-option-1, [data-type="movie_iframe_link"], .options-player li, ' +
-            '.vjs-big-play-button, .jw-display-icon-container, .jw-icon-display, .jw-preview, ' +
-            '[class*="play-button"], [class*="play-icon"], [class*="play"], [id*="play"], button[title*="Play"], ' +
-            'svg, path, polygon, canvas, button'
-          );
-          playElements.forEach(function(el) {
-            fireClick(el);
-          });
+        function safeClick(el) {
+          if (!el) return;
+          try {
+            var opts = { bubbles: true, cancelable: true, view: window };
+            el.dispatchEvent(new MouseEvent('mousedown', opts));
+            el.dispatchEvent(new MouseEvent('mouseup', opts));
+            el.dispatchEvent(new MouseEvent('click', opts));
+            if (typeof el.click === 'function') el.click();
+          } catch(e){}
+        }
 
-          // 2. Target HTML5 Video elements and force auto-play
-          var vids = document.querySelectorAll('video');
-          vids.forEach(function(v) {
-            try {
-              v.style.setProperty('width', '100vw', 'important');
-              v.style.setProperty('height', '100vh', 'important');
-              if (v.paused && typeof v.play === 'function') {
-                v.muted = true; // bypass gesture requirement
-                var p = v.play();
-                if (p && typeof p.then === 'function') {
-                  p.then(function() {
-                    setTimeout(function() { v.muted = false; }, 400);
-                  }).catch(function() {
-                    v.play();
-                  });
-                }
-              }
-            } catch(e){}
-          });
+        // Periodic trigger for play buttons & video tags
+        function runAutoPlay() {
+          injectPlayerStyle();
 
-          // 3. Multi-point coordinate taps (Targets center-right & center play overlays)
-          var tapPoints = [
-            [0.50, 0.50],
-            [0.75, 0.35],
-            [0.70, 0.30],
-            [0.65, 0.40],
-            [0.50, 0.40]
-          ];
-          tapPoints.forEach(function(pt) {
-            try {
-              var x = window.innerWidth * pt[0];
-              var y = window.innerHeight * pt[1];
-              var targetElem = document.elementFromPoint(x, y);
-              if (targetElem && targetElem.tagName !== 'HTML' && targetElem.tagName !== 'BODY') {
-                fireClick(targetElem);
-              }
-            } catch(e){}
-          });
+          // 1. Click Lena / StariCrtaci play triggers & options
+          try {
+            var triggers = document.querySelectorAll(
+              '#frame-cover, #player-frame > a, .film-play, .btn-play, .play-btn, .pv_play_btn, .videoplayer_play, ' +
+              '.do-player-option, #player-option-1, [data-type="movie_iframe_link"], .options-player li, ' +
+              '.vjs-big-play-button, .jw-display-icon-container, .jw-icon-display, .jw-preview, ' +
+              '[class*="play-button"], [class*="play-icon"], [class*="play"], [id*="play"], button[title*="Play"], ' +
+              'svg, path, polygon, canvas'
+            );
+            triggers.forEach(function(t) { safeClick(t); });
+          } catch(e){}
 
-          // 4. Expand and trigger nested iframes
-          var iframes = document.querySelectorAll('iframe');
-          iframes.forEach(function(f) {
-            if (f.src && !f.src.includes('about:blank') && !f.src.includes('cbox') && !f.src.includes('facebook')) {
-              f.style.setProperty('position', 'fixed', 'important');
-              f.style.setProperty('top', '0px', 'important');
-              f.style.setProperty('left', '0px', 'important');
-              f.style.setProperty('width', '100vw', 'important');
-              f.style.setProperty('height', '100vh', 'important');
-              f.style.setProperty('z-index', '999999', 'important');
-
+          // 2. Play HTML5 videos
+          try {
+            var vids = document.querySelectorAll('video');
+            vids.forEach(function(v) {
               try {
-                var doc = f.contentDocument || (f.contentWindow ? f.contentWindow.document : null);
-                if (doc) {
-                  var innerTargets = doc.querySelectorAll('.vjs-big-play-button, .jw-display-icon-container, video, [class*="play"], svg, polygon, button');
-                  innerTargets.forEach(function(ib) {
-                    fireClick(ib);
-                  });
-                  var innerVids = doc.querySelectorAll('video');
-                  innerVids.forEach(function(iv) {
-                    if (iv.paused && typeof iv.play === 'function') {
-                      iv.muted = true;
-                      iv.play();
-                    }
-                  });
+                v.style.setProperty('width', '100vw', 'important');
+                v.style.setProperty('height', '100vh', 'important');
+                if (v.paused && typeof v.play === 'function') {
+                  v.muted = true;
+                  var p = v.play();
+                  if (p && typeof p.then === 'function') {
+                    p.then(function() {
+                      setTimeout(function() { try { v.muted = false; } catch(err){} }, 300);
+                    }).catch(function(){ try { v.play(); } catch(err){} });
+                  }
                 }
-              } catch(crossErr){}
-            }
-          });
+              } catch(err){}
+            });
+          } catch(e){}
+
+          // 3. Virtual Center Tap (Center & Center-Right)
+          try {
+            var coords = [[0.5, 0.5], [0.75, 0.35], [0.70, 0.30]];
+            coords.forEach(function(c) {
+              try {
+                var el = document.elementFromPoint(window.innerWidth * c[0], window.innerHeight * c[1]);
+                if (el && el.tagName !== 'HTML' && el.tagName !== 'BODY') {
+                  safeClick(el);
+                }
+              } catch(err){}
+            });
+          } catch(e){}
         }
 
-        autoPlayLoop();
-        var timer = setInterval(autoPlayLoop, 300);
+        runAutoPlay();
+        var timer = setInterval(runAutoPlay, 500);
 
         setTimeout(function() {
           clearInterval(timer);
-          setInterval(autoPlayLoop, 1500);
+          setInterval(runAutoPlay, 2000);
         }, 10000);
 
       } catch(e){}
@@ -317,9 +255,7 @@ export default function VideoPlayer({ embedUrl, title, onClose, navigation }) {
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
           injectedJavaScriptForMainFrameOnly={false}
-          injectedJavaScriptBeforeContentLoadedForMainFrameOnly={false}
-          injectedJavaScriptBeforeContentLoaded={autoPlayScript}
-          injectedJavaScript={autoPlayScript}
+          injectedJavaScript={safeAutoPlayScript}
           userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
           onShouldStartLoadWithRequest={(request) => {
             const url = request.url.toLowerCase();
