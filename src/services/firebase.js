@@ -1,8 +1,14 @@
 import cartoonsDb from '../data/cartoons_db.json';
 
 /**
- * Firebase Firestore database helper service
+ * Firebase Firestore Configuration for Project: crtanifilmovisilv3r
  */
+export const firebaseConfig = {
+  projectId: "crtanifilmovisilv3r",
+  authDomain: "crtanifilmovisilv3r.firebaseapp.com",
+  storageBucket: "crtanifilmovisilv3r.firebasestorage.app",
+};
+
 export const firebaseService = {
   // Get all cartoons from database
   async getAllCartoons() {
