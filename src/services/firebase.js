@@ -6,10 +6,9 @@ import {
   query,
   where,
   limit,
-  startAfter,
   orderBy
-} from 'firebase/firestore';
-import cartoonsDbFallback from '../data/cartoons_db.json' with { type: 'json' };
+} from 'firebase/firestore/lite';
+import cartoonsDbFallback from '../data/cartoons_db.json';
 
 export const firebaseConfig = {
   projectId: "crtanifilmovisilv3r",

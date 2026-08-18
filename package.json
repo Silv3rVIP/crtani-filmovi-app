@@ -23,6 +23,8 @@
   "author": "Antigravity AI",
   "license": "MIT",
   "dependencies": {
+    "@firebase/app": "^0.16.0",
+    "@firebase/firestore": "^4.17.0",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "axios": "^1.19.0",
     "cheerio": "^1.2.0",
